@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { AttendanceActions } from './attendance-actions'
+import { AttendanceRealtimeListener } from '@/components/attendance/realtime-listener'
 import {
     Table,
     TableBody,
@@ -36,6 +37,7 @@ export default async function AttendancePage() {
 
     return (
         <div className="space-y-6">
+            <AttendanceRealtimeListener userId={user.id} />
             <h1 className="text-2xl font-bold">Attendance</h1>
 
             <div className="grid gap-6 md:grid-cols-2">

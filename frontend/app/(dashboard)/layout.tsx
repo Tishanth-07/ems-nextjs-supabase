@@ -1,5 +1,6 @@
 import { Sidebar } from '@/components/dashboard/sidebar'
 import { Header } from '@/components/dashboard/header'
+import { GlobalNotifications } from '@/components/dashboard/notifications'
 
 export default function DashboardLayout({
     children,
@@ -8,6 +9,7 @@ export default function DashboardLayout({
 }) {
     return (
         <div className="flex h-screen overflow-hidden bg-gray-100 dark:bg-gray-900">
+            <GlobalNotifications />
             <Sidebar />
             <div className="flex flex-col flex-1 overflow-hidden">
                 <Header />
