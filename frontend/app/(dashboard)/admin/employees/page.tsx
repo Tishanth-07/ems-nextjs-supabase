@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { AddEmployeeDialog } from '@/components/admin/add-employee-dialog'
 import {
     Table,
     TableBody,
@@ -45,9 +46,7 @@ export default async function EmployeesPage() {
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-bold tracking-tight">Employees & Users</h1>
-                <Button asChild>
-                    <Link href="/admin/employees/new">Add Employee</Link>
-                </Button>
+                <AddEmployeeDialog />
             </div>
 
             <div className="rounded-md border bg-white dark:bg-card">
@@ -64,9 +63,7 @@ export default async function EmployeesPage() {
                     </TableHeader>
                     <TableBody>
                         {profiles?.map((profile: any) => {
-                            const employeeRecord = profile.employees?.[0] || profile.employees // handle array or object depending on relationship (one-to-one usually object if single, array if many. Supabase returns array by default unless .single())
-                            // Actually, one-to-many returns array. One-to-one returns object if specified? No, usually array in Select.
-                            // We'll assume array.
+                            const employeeRecord = profile.employees?.[0] || profile.employees
                             const empData = Array.isArray(profile.employees) ? profile.employees[0] : profile.employees
                             const status = empData?.status || (profile.is_verified ? 'verified' : 'unverified')
 

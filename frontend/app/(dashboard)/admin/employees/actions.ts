@@ -1,91 +1,116 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { revalidatePath } from 'next/cache'
+import { z } from 'zod'
 
-export async function createEmployee(formData: FormData) {
+const createEmployeeSchema = z.object({
+    fullName: z.string().min(2, "Name must be at least 2 characters"),
+    email: z.string().email("Invalid email address"),
+    role: z.enum(['admin', 'manager', 'employee']),
+    department: z.string().min(2, "Department is required"),
+    position: z.string().min(2, "Position is required"),
+    // Optional: password? Or auto-generate.
+    // For now, let's auto-generate a temp password and return it, or set a default.
+    // User prompt: "password: temp/random"
+})
+
+export async function createEmployeeAction(prevState: any, formData: FormData) {
+    const validatedFields = createEmployeeSchema.safeParse({
+        fullName: formData.get('fullName'),
+        email: formData.get('email'),
+        role: formData.get('role'),
+        department: formData.get('department'),
+        position: formData.get('position'),
+    })
+
+    if (!validatedFields.success) {
+        return { error: 'Invalid fields', errors: validatedFields.error.flatten().fieldErrors }
+    }
+
+    const { fullName, email, role, department, position } = validatedFields.data
+
     const supabase = await createClient()
 
-    // Check auth and role
+    // 1. Verify Admin Access
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return { error: 'Not authenticated' }
+    if (!user) return { error: 'Unauthorized' }
 
-    // Ideally, check role here too or trust RLS
+    const { data: currentUserProfile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
 
-    const email = formData.get('email') as string
-    const fullName = formData.get('full_name') as string
-    const role = formData.get('role') as 'employee' | 'manager' | 'admin'
-    const department = formData.get('department') as string
-    const position = formData.get('position') as string
-    const employeeCode = formData.get('employee_code') as string
-    const salaryRate = parseFloat(formData.get('salary_rate') as string)
+    if (currentUserProfile?.role !== 'admin') {
+        return { error: 'Unauthorized: Admin access required' }
+    }
 
-    // 1. Create Auth User (Admin only feature usually, or use invite)
-    // For simplicity, we assume we might create a user or just profile if auth exists
-    // Supabase usually requires separate Modify User call for admin creation
-    // For this demo, let's assume we are creating the profile/employee record 
-    // and the user has surely signed up or will be invited.
-    // Actually, creating a user requires service_role key for admin actions. 
-    // We'll skip auth user creation in this simple action and assume profile exists or we insert it.
+    // 2. Create User via Admin API
+    // We use the service_role key to bypass RLS and use admin auth methods
+    const supabaseAdmin = createSupabaseClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
 
-    // Wait! profiles are linked to auth.users. 
-    // To "Create Employee", typically an Admin invites a user by email.
-    // We will use `supabase.auth.admin.inviteUserByEmail` if we had the service role client.
-    // Since we are using standard creation, we might need to instruct to use the Invite UI.
+    const tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8)
 
-    // Let's just Insert into `employees` table assuming profile might exist or we just track metadata.
-    // But `employees` requires `profile_id` which is `auth.users.id`.
-    // So we MUST have an auth user.
+    const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password: tempPassword,
+        email_confirm: true, // Auto-confirm so they can login immediately
+        user_metadata: {
+            full_name: fullName,
+            username: email.split('@')[0], // Default username
+            role: role, // Trigger should use this
+            department: department // Trigger might not use this, so we might need to update profile
+        }
+    })
 
-    // CORRECT APPROACH: Admin Invites User -> User Accepts -> Trigger creates Profile -> Admin updates Employee details.
-    // OR: Admin creates "Employee" record first? No, `profile_id` is NOT NULL FK.
+    if (createError) {
+        return { error: createError.message }
+    }
 
-    // Implementation: We will just focus on updating/managing EXISTING profiles to become employees.
-    // Or purely CRUD on the `employees` table for those who already have profiles.
+    if (!newUser.user) {
+        return { error: 'Failed to create user' }
+    }
 
-    return { error: "Employee creation requires User Invitation flow. Please invite user via Supabase Auth first." }
-}
+    // 3. Ensure Profile is updated (in case trigger missed department or role)
+    // The trigger handles ID, email, username, role, full_name.
+    // But does it handle 'department'?
+    // My trigger function was:
+    // INSERT INTO profiles ... VALUES (..., COALESCE(meta->>'role'), meta->>'full_name', ...)
+    // It did NOT insert department.
+    // So we must update the profile to set department.
 
-export async function updateEmployee(formData: FormData) {
-    const supabase = await createClient()
+    // We also need to insert into 'employees' table.
 
-    const id = formData.get('id') as string // Employee ID
-    const position = formData.get('position') as string
-    const department = formData.get('department') as string // This is on Profile actually
-    const salaryRate = parseFloat(formData.get('salary_rate') as string)
-    const status = formData.get('status') as string
+    const { error: profileUpdateError } = await supabaseAdmin
+        .from('profiles')
+        .update({ department: department })
+        .eq('id', newUser.user.id)
 
-    // Update Employees Table
-    const { error: empError } = await supabase
+    if (profileUpdateError) {
+        // Log but don't fail, as user is created
+        console.error('Error updating profile department:', profileUpdateError)
+    }
+
+    // 4. Insert into Employees table
+    const { error: employeeError } = await supabaseAdmin
         .from('employees')
-        .update({
-            position,
-            salary_rate: salaryRate,
-            status: status as any
+        .insert({
+            profile_id: newUser.user.id,
+            position: position,
+            status: 'active',
+            hire_date: new Date().toISOString().split('T')[0] // Today
         })
-        .eq('id', id)
 
-    if (empError) return { error: empError.message }
-
-    // We might also need to update Profile (department)
-    // But we need profile_id from the employee record first or join.
-    // For simplicity, we skip profile update here or do two queries.
+    if (employeeError) {
+        return { error: 'User created but failed to create employee record: ' + employeeError.message, tempPassword }
+    }
 
     revalidatePath('/admin/employees')
-    return { success: true }
-}
 
-export async function deleteEmployee(id: string) {
-    const supabase = await createClient()
-
-    const { error } = await supabase
-        .from('employees')
-        .delete()
-        .eq('id', id)
-
-    if (error) return { error: error.message }
-
-    revalidatePath('/admin/employees')
-    return { success: true }
+    return { success: true, tempPassword, message: `Employee created! Password: ${tempPassword}` }
 }
