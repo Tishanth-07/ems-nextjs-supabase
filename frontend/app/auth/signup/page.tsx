@@ -10,6 +10,7 @@ import { z } from 'zod'
 import { Loader2, User, Mail, Lock, ArrowRight } from 'lucide-react'
 import { toast } from 'sonner'
 
+import { signUpAction } from '../actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/ui/password-input'
