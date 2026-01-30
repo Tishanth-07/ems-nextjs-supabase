@@ -74,57 +74,59 @@ const signupSchema = z.object({
 })
 
 export async function signUpAction(prevState: any, formData: FormData) {
-    const validatedFields = signupSchema.safeParse({
-        username: formData.get('username'),
-        email: formData.get('email'),
-        password: formData.get('password'),
-    })
-
-    if (!validatedFields.success) {
-        return { error: 'Invalid input fields', errors: validatedFields.error.flatten().fieldErrors }
-    }
-
-    const { username, email, password } = validatedFields.data
-    const supabaseService = createSupabaseClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
-
-    // 1. Check Username Uniqueness
-    const { data: existingUser } = await supabaseService
-        .from('profiles')
-        .select('username')
-        .eq('username', username)
-        .single()
-
-    if (existingUser) {
-        return { error: 'Username already taken' }
-    }
-
-    // 2. Create Auth User
-    const supabase = await createClient()
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-            data: { username, is_verified: false }
-        }
-    })
-
-    if (authError) return { error: authError.message }
-    if (!authData.user) return { error: 'Something went wrong creating account' }
-
-    // 3. Generate & Send OTP
     try {
+        const validatedFields = signupSchema.safeParse({
+            username: formData.get('username'),
+            email: formData.get('email'),
+            password: formData.get('password'),
+        })
+
+        if (!validatedFields.success) {
+            return { error: 'Invalid input fields', errors: validatedFields.error.flatten().fieldErrors }
+        }
+
+        const { username, email, password } = validatedFields.data
+        const supabaseService = createSupabaseClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+        )
+
+        // 1. Check Username Uniqueness
+        const { data: existingUser } = await supabaseService
+            .from('profiles')
+            .select('username')
+            .eq('username', username)
+            .maybeSingle() // Use maybeSingle to avoid thrown error on no row
+
+        if (existingUser) {
+            return { error: 'Username already taken' }
+        }
+
+        // 2. Create Auth User
+        const supabase = await createClient()
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+                data: { username, is_verified: false }
+            }
+        })
+
+        if (authError) return { error: authError.message }
+        if (!authData.user) return { error: 'Something went wrong creating account' }
+
+        // 3. Generate & Send OTP
         const otp = await generateAndStoreOTP(email)
         const emailResult = await sendOTPEmail(email, otp)
         if (emailResult.error) return { error: emailResult.error }
-    } catch (e) {
-        return { error: 'Failed to prepare verification' }
-    }
 
-    // 4. Return success to redirect safely on client-side
-    return { success: true, email: email }
+        // 4. Return success
+        return { success: true, email: email }
+
+    } catch (error: any) {
+        console.error('Unexpected error in signUpAction:', error)
+        return { error: 'An unexpected error occurred. Please try again.' }
+    }
 }
 
 // --- Action: Verify OTP ---
