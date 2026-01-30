@@ -52,6 +52,11 @@ This project features a robust, secure, and user-friendly authentication system 
     *   **Feedback:** Toast notifications (via `sonner`) provide clear success/error messages. Loading states are shown on specific buttons.
     *   **Input Formatting:** Uses Shadcn UI components with accessible labeling and focus states.
 
+*   **Profile Management:**
+    *   **Profile Photos:** Users can upload, change, or remove their profile photo.
+    *   **Camera Integration:** Supports instant photo capture via webcam (HTTPS required for production).
+    *   **Supabase Storage:** Photos are securely stored in a public bucket with RLS policies restricting upload/delete access to the owner.
+
 *   **Security:**
     *   **Strong Passwords:** Enforced via Zod schemas on both client and server (min 8 chars, complexity rules).
     *   **Email Verification:** Mandatory OTP email verification flow for new accounts.

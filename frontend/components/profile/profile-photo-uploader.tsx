@@ -1,18 +1,20 @@
 "use client"
 
 import { useState, useRef } from "react"
-import { Camera, Image as ImageIcon, Trash2, Loader2, Upload } from "lucide-react"
+import { Camera, Trash2, Loader2, Upload } from "lucide-react"
 import { toast } from "sonner"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { CameraCaptureModal } from "./camera-capture-modal"
+import { uploadProfilePhoto, removeProfilePhoto } from "@/app/(dashboard)/profile/actions"
 
 interface ProfilePhotoUploaderProps {
     currentPhotoUrl?: string | null
     userId: string
     userName: string
     className?: string
-    onPhotoUpdated?: (url: string | null) => void // To notify parent
+    onPhotoUpdated?: (url: string | null) => void
 }
 
 export function ProfilePhotoUploader({
@@ -24,13 +26,11 @@ export function ProfilePhotoUploader({
 }: ProfilePhotoUploaderProps) {
     const [isLoading, setIsLoading] = useState(false)
     const [previewUrl, setPreviewUrl] = useState<string | null>(currentPhotoUrl || null)
+    const [isCameraOpen, setIsCameraOpen] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
 
-    // Handle File Select
-    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0]
-        if (!file) return
-
+    // Handle File Process
+    const handleFileProcess = async (file: File) => {
         // Validate
         if (!file.type.startsWith("image/")) {
             toast.error("Please select an image file")
@@ -41,15 +41,38 @@ export function ProfilePhotoUploader({
             return
         }
 
-        // Preview
+        // Optimistic Preview
         const objectUrl = URL.createObjectURL(file)
         setPreviewUrl(objectUrl)
+        setIsLoading(true)
 
-        // TODO: Trigger Upload Server Action (Phase 4)
-        toast.info("Selected for upload (Implementation coming in Phase 4)")
+        try {
+            const formData = new FormData()
+            formData.append("file", file)
 
-        // Cleanup
-        return () => URL.revokeObjectURL(objectUrl)
+            const result = await uploadProfilePhoto(formData)
+
+            if (result.error) {
+                toast.error(result.error)
+                setPreviewUrl(currentPhotoUrl || null) // Revert
+            } else if (result.success && result.url) {
+                toast.success("Profile photo updated!")
+                if (onPhotoUpdated) onPhotoUpdated(result.url)
+                setPreviewUrl(result.url)
+            }
+        } catch (error) {
+            toast.error("Upload failed. Please try again.")
+            setPreviewUrl(currentPhotoUrl || null)
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+        handleFileProcess(file)
+        e.target.value = "" // Reset
     }
 
     const triggerFileInput = () => {
@@ -57,9 +80,23 @@ export function ProfilePhotoUploader({
     }
 
     const handleRemovePhoto = async () => {
-        // TODO: Trigger Remove Server Action (Phase 4)
-        setPreviewUrl(null)
-        toast.info("Removed photo (Implementation coming in Phase 4)")
+        if (!confirm("Are you sure you want to remove your profile photo?")) return
+
+        setIsLoading(true)
+        try {
+            const result = await removeProfilePhoto()
+            if (result.error) {
+                toast.error(result.error)
+            } else {
+                toast.success("Profile photo removed")
+                setPreviewUrl(null)
+                if (onPhotoUpdated) onPhotoUpdated(null)
+            }
+        } catch (error) {
+            toast.error("Failed to remove photo")
+        } finally {
+            setIsLoading(false)
+        }
     }
 
     const initials = userName
@@ -78,8 +115,6 @@ export function ProfilePhotoUploader({
                         {initials}
                     </AvatarFallback>
                 </Avatar>
-
-                {/* Quick overlay actions if needed, or kept simple sidebar */}
             </div>
 
             <div className="flex flex-col gap-2 w-full sm:w-auto">
@@ -100,7 +135,7 @@ export function ProfilePhotoUploader({
                         variant="outline"
                         disabled={isLoading}
                         className="gap-2"
-                        onClick={() => toast.info("Camera capture coming in Phase 3")}
+                        onClick={() => setIsCameraOpen(true)}
                     >
                         <Camera className="h-4 w-4" />
                         Take Photo
@@ -134,6 +169,12 @@ export function ProfilePhotoUploader({
                     onChange={handleFileSelect}
                 />
             </div>
+
+            <CameraCaptureModal
+                isOpen={isCameraOpen}
+                onClose={() => setIsCameraOpen(false)}
+                onCapture={handleFileProcess}
+            />
         </div>
     )
 }
