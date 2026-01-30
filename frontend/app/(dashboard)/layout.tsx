@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
-import { AppSidebar } from '@/components/dashboard/app-sidebar'
+import { DashboardSidebar } from '@/components/dashboard/dashboard-sidebar'
 import { Header } from '@/components/dashboard/header'
 import { GlobalNotifications } from '@/components/dashboard/notifications'
+import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 
 export default async function DashboardLayout({
     children,
@@ -15,22 +16,22 @@ export default async function DashboardLayout({
     if (user) {
         const { data } = await supabase
             .from('profiles')
-            .select('full_name, photo_url')
+            .select('full_name, photo_url, role')
             .eq('id', user.id)
             .maybeSingle()
         profile = data
     }
 
     return (
-        <div className="flex h-screen overflow-hidden bg-gray-100 dark:bg-background">
+        <SidebarProvider>
             <GlobalNotifications />
-            <AppSidebar />
-            <div className="flex flex-col flex-1 overflow-hidden lg:ml-0">
+            <DashboardSidebar user={user} userRole={profile?.role as any} />
+            <SidebarInset>
                 <Header user={user} profile={profile} />
-                <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+                <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
                     {children}
                 </main>
-            </div>
-        </div>
+            </SidebarInset>
+        </SidebarProvider>
     )
 }

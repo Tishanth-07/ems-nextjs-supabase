@@ -62,7 +62,7 @@ export async function updateSession(request: NextRequest) {
     }
 
     // 2. Protect Dashboard Routes
-    const protectedPrefixes = ['/admin', '/manager', '/employee', '/profile', '/attendance', '/leaves']
+    const protectedPrefixes = ['/admin', '/manager', '/employee', '/profile', '/attendance', '/leaves', '/dashboard']
     const isProtectedRoute = protectedPrefixes.some(prefix => path.startsWith(prefix))
 
     if (isProtectedRoute) {
@@ -80,6 +80,14 @@ export async function updateSession(request: NextRequest) {
 
         const role = profile?.role || 'employee'
 
+        // Generic /dashboard redirect
+        if (path === '/dashboard') {
+            if (role === 'admin') url.pathname = '/admin'
+            else if (role === 'manager') url.pathname = '/manager'
+            else url.pathname = '/employee'
+            return NextResponse.redirect(url)
+        }
+
         // Admin only routes
         if (path.startsWith('/admin') && role !== 'admin') {
             // Redirect unauthorized users to their own dashboard
@@ -93,15 +101,6 @@ export async function updateSession(request: NextRequest) {
             url.pathname = '/employee'
             return NextResponse.redirect(url)
         }
-
-        // Employee routes are generally accessible to all, or restricted?
-        // Usually admins/managers can view employee views too, but maybe redirect them?
-        // For now, allow higher roles to access lower role pages if needed, 
-        // OR strictly separate. Existing sidebar implies Admin has own dashboard.
-        // If Admin goes to /employee, maybe let them? Or redirect?
-        // Let's prevent Admin/Manager from landing on /employee dashboard if they have their own.
-        // But they might want to see the "Employee View".
-        // Let's only STRICTLY block lower roles from accessing higher role areas.
     }
 
     return response

@@ -353,3 +353,10 @@ export async function resetPasswordAction(prevState: any, formData: FormData) {
 
     return { success: true }
 }
+
+// --- Action: Sign Out ---
+export async function signOutAction() {
+    const supabase = await createClient()
+    await supabase.auth.signOut()
+    redirect('/')
+}
