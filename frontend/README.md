@@ -34,3 +34,40 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Authentication System
+
+This project features a robust, secure, and user-friendly authentication system built with **Supabase Auth**, **Next.js Server Actions**, and **Zod** validation.
+
+### Key Features
+
+*   **Role-Based Access Control (RBAC):**
+    *   Automatically redirects users to their specific dashboard upon login (`/admin`, `/manager`, `/employee`).
+    *   Middleware protection prevents unauthorized access to role-specific routes.
+    *   Authenticated users are redirected away from auth pages (login/signup) to their dashboard.
+
+*   **Premium UI/UX:**
+    *   **Password Visibility:** Users can toggle password visibility (Eye icon) in all password fields.
+    *   **Real-time Strength Validation:** Sign-up and Reset Password forms display a real-time checklist for strong password requirements (8+ chars, uppercase, lowercase, number, special char).
+    *   **Feedback:** Toast notifications (via `sonner`) provide clear success/error messages. Loading states are shown on specific buttons.
+    *   **Input Formatting:** Uses Shadcn UI components with accessible labeling and focus states.
+
+*   **Security:**
+    *   **Strong Passwords:** Enforced via Zod schemas on both client and server (min 8 chars, complexity rules).
+    *   **Email Verification:** Mandatory OTP email verification flow for new accounts.
+    *   **Secure Reset:** Password reset flow uses OTP verification.
+    *   **Server-Side Logic:** Authentication logic resides in Server Actions (`app/auth/actions.ts`) to keep sensitive operations secure.
+
+### Technologies
+*   **Supabase Auth:** User management and session handling.
+*   **Next.js Middleware:** Route protection and session refreshing.
+*   **Zod:** Strict schema validation for all forms.
+*   **React Hook Form:** Efficient client-side form state management.
+*   **Nodemailer:** Custom OTP email delivery (Gmail SMTP).
+
+### Setup
+Ensure your `.env.local` contains:
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY` (for admin actions like generating OTPs)
+- `GMAIL_USER` and `GMAIL_APP_PASSWORD` (for email/OTP sending)
