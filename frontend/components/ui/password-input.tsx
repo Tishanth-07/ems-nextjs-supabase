@@ -1,15 +1,12 @@
-"use client"
-
 import * as React from "react"
 import { Eye, EyeOff } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
 
 const PasswordInput = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
     ({ className, ...props }, ref) => {
         const [showPassword, setShowPassword] = React.useState(false)
-        const disabled = props.value === "" || props.value === undefined || props.disabled
 
         return (
             <div className="relative">
@@ -25,14 +22,16 @@ const PasswordInput = React.forwardRef<HTMLInputElement, React.ComponentProps<"i
                     size="sm"
                     className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => setShowPassword((prev) => !prev)}
-                    disabled={disabled}
+                    tabIndex={-1} // Skip tab focus for the button to keep flow smooth? Or allow it? Accessibility says allow it.
+                    // But strict accessible forms usually allow tabbing to the toggle.
+                    // Let's remove tabIndex={-1} to allow keyboard users to toggle it.
+                    aria-label={showPassword ? "Hide password" : "Show password"}
                 >
-                    {showPassword && !disabled ? (
-                        <EyeOff className="h-4 w-4" aria-hidden="true" />
+                    {showPassword ? (
+                        <EyeOff className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                     ) : (
-                        <Eye className="h-4 w-4" aria-hidden="true" />
+                        <Eye className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                     )}
-                    <span className="sr-only">{showPassword ? "Hide password" : "Show password"}</span>
                 </Button>
             </div>
         )
