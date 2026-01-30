@@ -110,7 +110,7 @@ export function ProfilePhotoUploader({
         <div className={cn("flex flex-col items-center gap-4 sm:flex-row", className)}>
             <div className="relative group">
                 <Avatar className="h-24 w-24 sm:h-32 sm:w-32 border-4 border-background shadow-lg">
-                    <AvatarImage src={previewUrl || ""} alt={userName} className="object-cover" />
+                    <AvatarImage src={previewUrl || undefined} alt={userName} className="object-cover" />
                     <AvatarFallback className="text-2xl sm:text-3xl bg-primary/10 text-primary">
                         {initials}
                     </AvatarFallback>
