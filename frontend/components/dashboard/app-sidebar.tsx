@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
-import { ThemeToggle } from "@/components/theme-provider" // Assuming basic toggle exists or use ModeToggle
+import { ModeToggle } from "@/components/mode-toggle"
 
 type Role = "admin" | "manager" | "employee"
 
@@ -102,10 +102,10 @@ export function AppSidebar() {
                         </Link>
                     ))}
                 </nav>
-                <div className="p-4 border-t">
+                <div className="p-4 border-t flex items-center justify-between">
                     <Button
                         variant="ghost"
-                        className="w-full justify-start text-muted-foreground hover:text-destructive"
+                        className="justify-start text-muted-foreground hover:text-destructive"
                         onClick={async () => {
                             const supabase = createClient()
                             await supabase.auth.signOut()
@@ -115,6 +115,7 @@ export function AppSidebar() {
                         <LogOut className="mr-2 h-4 w-4" />
                         Sign Out
                     </Button>
+                    <ModeToggle />
                 </div>
             </aside>
 
