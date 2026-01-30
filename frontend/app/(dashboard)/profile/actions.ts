@@ -102,3 +102,36 @@ export async function removeProfilePhoto() {
 
     return { success: true }
 }
+
+export async function updateProfile(formData: FormData) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+        return { error: 'Unauthorized' }
+    }
+
+    const full_name = formData.get('full_name') as string
+    const department = formData.get('department') as string
+
+    // Basic validation
+    if (!full_name || full_name.length < 2) {
+        return { error: 'Full name must be at least 2 characters' }
+    }
+
+    const { error } = await supabase
+        .from('profiles')
+        .update({
+            full_name,
+            department,
+            updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id)
+
+    if (error) {
+        return { error: 'Failed to update profile' }
+    }
+
+    revalidatePath('/profile')
+    return { success: true }
+}
