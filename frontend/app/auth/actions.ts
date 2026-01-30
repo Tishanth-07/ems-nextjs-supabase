@@ -102,14 +102,13 @@ export async function signUpAction(prevState: any, formData: FormData) {
             return { error: 'Username already taken' }
         }
 
-        // 2. Create Auth User
-        const supabase = await createClient()
-        const { data: authData, error: authError } = await supabase.auth.signUp({
+        // 2. Create Auth User (Admin Mode to bypass Supabase Rate Limits/Default Emails)
+        // We handle email verification manually via OTP.
+        const { data: authData, error: authError } = await supabaseService.auth.admin.createUser({
             email,
             password,
-            options: {
-                data: { username, is_verified: false }
-            }
+            email_confirm: false,
+            user_metadata: { username, is_verified: false }
         })
 
         if (authError) return { error: authError.message }
