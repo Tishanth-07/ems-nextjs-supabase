@@ -59,9 +59,9 @@ export default function SignInPage() {
         if (result?.error) {
             toast.error(result.error)
             setIsLoading(false)
-        } else {
-            // Redirect handled by server action, but just in case
-            // toast.success("Welcome back!") // usually redirect happens fast
+        } else if (result?.success && result.redirectUrl) {
+            toast.success("Login successful! Redirecting...")
+            router.push(result.redirectUrl)
         }
     }
 
