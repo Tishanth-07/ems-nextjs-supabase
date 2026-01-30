@@ -8,7 +8,7 @@ import nodemailer from 'nodemailer'
 import { z } from 'zod'
 
 // --- Utility: Send Email ---
-async function sendOTPEmail(email: string, otp: string) {
+export async function sendOTPEmail(email: string, otp: string) {
     try {
         const transporter = nodemailer.createTransport({
             service: 'gmail',
@@ -39,7 +39,7 @@ async function sendOTPEmail(email: string, otp: string) {
 }
 
 // --- Utility: Generate & Store OTP ---
-async function generateAndStoreOTP(email: string) {
+export async function generateAndStoreOTP(email: string) {
     const supabaseService = createSupabaseClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!

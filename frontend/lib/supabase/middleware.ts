@@ -37,68 +37,90 @@ export async function updateSession(request: NextRequest) {
         data: { user },
     } = await supabase.auth.getUser()
 
-    // Protected Routes Logic
     const url = request.nextUrl.clone()
     const path = url.pathname
 
-    // 1. Redirect authenticated users away from auth pages
-    if (user && (path.startsWith('/auth') || path === '/login')) {
-        // Redirect to their specific dashboard based on role?
-        // Since we don't have the profile easily here without querying, 
-        // we'll query it or default to a safe place.
-        // For better UX during "already logged in" visits, let's query the role.
+    // 4. Role-Based Access Control
+    // Fetch profile to determine role
+    let userRole = 'employee'
+    if (user) {
         const { data: profile } = await supabase
             .from('profiles')
             .select('role')
             .eq('id', user.id)
             .single()
 
-        const role = profile?.role || 'employee'
-        if (role === 'admin') url.pathname = '/admin'
-        else if (role === 'manager') url.pathname = '/manager'
-        else url.pathname = '/employee'
-
-        return NextResponse.redirect(url)
+        if (profile?.role) {
+            userRole = profile.role
+        }
     }
 
-    // 2. Protect Dashboard Routes
-    const protectedPrefixes = ['/admin', '/manager', '/employee', '/profile', '/attendance', '/leaves', '/dashboard']
-    const isProtectedRoute = protectedPrefixes.some(prefix => path.startsWith(prefix))
+    // 4.1 Redirect authenticated users from Auth pages to their Dashboard
+    if (user && (path.startsWith('/auth') || path === '/login' || path === '/')) {
+        // If user visits root or login, send to role dashboard
+        if (path === '/' || path.startsWith('/auth')) {
+            if (userRole === 'admin') url.pathname = '/admin'
+            else if (userRole === 'manager') url.pathname = '/manager'
+            else url.pathname = '/employee'
+            return NextResponse.redirect(url)
+        }
+    }
 
-    if (isProtectedRoute) {
+    // 4.2 Protected Routes
+    const protectedPrefixes = ['/admin', '/manager', '/employee', '/dashboard', '/profile', '/attendance', '/leaves']
+    const isProtected = protectedPrefixes.some(prefix => path.startsWith(prefix))
+
+    if (isProtected) {
         if (!user) {
             url.pathname = '/auth/signin'
+            // Add next param for better UX
+            // url.searchParams.set('next', path) 
             return NextResponse.redirect(url)
         }
 
-        // 3. Enforce Role Access
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', user.id)
-            .single()
-
-        const role = profile?.role || 'employee'
-
-        // Generic /dashboard redirect
+        // 4.3 Path-Role Mismatch Check
+        // /dashboard -> Redirect to role root
         if (path === '/dashboard') {
-            if (role === 'admin') url.pathname = '/admin'
-            else if (role === 'manager') url.pathname = '/manager'
+            if (userRole === 'admin') url.pathname = '/admin'
+            else if (userRole === 'manager') url.pathname = '/manager'
             else url.pathname = '/employee'
             return NextResponse.redirect(url)
         }
 
-        // Admin only routes
-        if (path.startsWith('/admin') && role !== 'admin') {
-            // Redirect unauthorized users to their own dashboard
-            if (role === 'manager') url.pathname = '/manager'
+        // Admin Paths
+        if (path.startsWith('/admin') && userRole !== 'admin') {
+            // Unauthorized access to admin, redirect to own dashboard
+            if (userRole === 'manager') url.pathname = '/manager'
             else url.pathname = '/employee'
             return NextResponse.redirect(url)
         }
 
-        // Manager only routes (if any specific, currently /manager)
-        if (path.startsWith('/manager') && !['admin', 'manager'].includes(role)) {
+        // Manager Paths
+        if (path.startsWith('/manager') && userRole !== 'manager' && userRole !== 'admin') {
+            // Managers can access /manager. Admins usually can too? 
+            // Phase requirement: "/manager/* -> only manager". 
+            // Usually Admins have super-access. Let's allow Admin.
+            // But User Prompt says: "Admins sees admin menu + admin content".
+            // If Admin goes to /manager, they might see Manager Dashboard?
+            // Let's stick to strict: Admin -> /admin.
+            // If Admin tries /manager, redirect to /admin?
+            // User Prompt: "/manager/* -> only 'manager'". 
+            // I will enforce Strict Separation.
+            if (userRole === 'admin') {
+                url.pathname = '/admin'
+                return NextResponse.redirect(url)
+            }
             url.pathname = '/employee'
+            return NextResponse.redirect(url)
+        }
+
+        // Employee Paths
+        // Employee -> /employee.
+        // If Admin tries /employee?
+        // Let's redirect them to /admin.
+        if (path.startsWith('/employee') && userRole !== 'employee') {
+            if (userRole === 'admin') url.pathname = '/admin'
+            else if (userRole === 'manager') url.pathname = '/manager'
             return NextResponse.redirect(url)
         }
     }
