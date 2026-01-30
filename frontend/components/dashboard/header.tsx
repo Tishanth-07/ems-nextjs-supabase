@@ -1,5 +1,6 @@
-'use client'
+"use client"
 
+import Link from "next/link"
 import { ModeToggle } from '@/components/mode-toggle'
 import { UserAvatar } from '@/components/ui/user-avatar'
 
@@ -19,11 +20,13 @@ export function Header({ user, profile }: HeaderProps) {
             <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Dashboard</h2>
             <div className="flex items-center space-x-4">
                 <ModeToggle />
-                <UserAvatar
-                    name={profile?.full_name}
-                    photoUrl={profile?.photo_url}
-                    email={user?.email}
-                />
+                <Link href="/profile" title="View Profile">
+                    <UserAvatar
+                        name={profile?.full_name}
+                        photoUrl={profile?.photo_url}
+                        email={user?.email}
+                    />
+                </Link>
             </div>
         </header>
     )
