@@ -20,7 +20,7 @@ export function Header({ user, profile }: HeaderProps) {
             <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Dashboard</h2>
             <div className="flex items-center space-x-4">
                 <ModeToggle />
-                <Link href="/profile" title="View Profile">
+                <Link href="/profile" title="View Profile" aria-label="View your profile">
                     <UserAvatar
                         name={profile?.full_name}
                         photoUrl={profile?.photo_url}

@@ -57,6 +57,11 @@ This project features a robust, secure, and user-friendly authentication system 
     *   **Camera Integration:** Supports instant photo capture via webcam (HTTPS required for production).
     *   **Supabase Storage:** Photos are securely stored in a public bucket with RLS policies restricting upload/delete access to the owner.
 
+*   **Dashboard Navigation:**
+    *   **User Avatar:** Authenticated users see their profile photo (or initials fallback) in the dashboard header.
+    *   **Quick Access:** Clicking the avatar redirects to the Profile management page.
+    *   **Accessibility:** Fully accessible keyboard navigation and screen reader support.
+
 *   **Security:**
     *   **Strong Passwords:** Enforced via Zod schemas on both client and server (min 8 chars, complexity rules).
     *   **Email Verification:** Mandatory OTP email verification flow for new accounts.
