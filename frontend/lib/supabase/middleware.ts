@@ -1,9 +1,11 @@
 import { createServerClient } from '@supabase/ssr'
-import { NextResponse, type NextRequest } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 
 export async function updateSession(request: NextRequest) {
-    let supabaseResponse = NextResponse.next({
-        request,
+    let response = NextResponse.next({
+        request: {
+            headers: request.headers,
+        },
     })
 
     const supabase = createServerClient(
@@ -15,14 +17,12 @@ export async function updateSession(request: NextRequest) {
                     return request.cookies.getAll()
                 },
                 setAll(cookiesToSet) {
-                    cookiesToSet.forEach(({ name, value }) =>
-                        request.cookies.set(name, value)
-                    )
-                    supabaseResponse = NextResponse.next({
+                    cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
+                    response = NextResponse.next({
                         request,
                     })
                     cookiesToSet.forEach(({ name, value, options }) =>
-                        supabaseResponse.cookies.set(name, value, options)
+                        response.cookies.set(name, value, options)
                     )
                 },
             },
@@ -37,19 +37,72 @@ export async function updateSession(request: NextRequest) {
         data: { user },
     } = await supabase.auth.getUser()
 
-    if (
-        !user &&
-        !request.nextUrl.pathname.startsWith('/login') &&
-        !request.nextUrl.pathname.startsWith('/auth')
-    ) {
-        // no user, potentially respond by redirecting the user to the login page
-        const url = request.nextUrl.clone()
-        url.pathname = '/login'
+    // Protected Routes Logic
+    const url = request.nextUrl.clone()
+    const path = url.pathname
+
+    // 1. Redirect authenticated users away from auth pages
+    if (user && (path.startsWith('/auth') || path === '/login')) {
+        // Redirect to their specific dashboard based on role?
+        // Since we don't have the profile easily here without querying, 
+        // we'll query it or default to a safe place.
+        // For better UX during "already logged in" visits, let's query the role.
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single()
+
+        const role = profile?.role || 'employee'
+        if (role === 'admin') url.pathname = '/admin'
+        else if (role === 'manager') url.pathname = '/manager'
+        else url.pathname = '/employee'
+
         return NextResponse.redirect(url)
     }
 
-    // NOTE: You can also handle role-based redirection here if needed,
-    // fetching the user's profile to check their role.
+    // 2. Protect Dashboard Routes
+    const protectedPrefixes = ['/admin', '/manager', '/employee', '/profile', '/attendance', '/leaves']
+    const isProtectedRoute = protectedPrefixes.some(prefix => path.startsWith(prefix))
 
-    return supabaseResponse
+    if (isProtectedRoute) {
+        if (!user) {
+            url.pathname = '/auth/signin'
+            return NextResponse.redirect(url)
+        }
+
+        // 3. Enforce Role Access
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single()
+
+        const role = profile?.role || 'employee'
+
+        // Admin only routes
+        if (path.startsWith('/admin') && role !== 'admin') {
+            // Redirect unauthorized users to their own dashboard
+            if (role === 'manager') url.pathname = '/manager'
+            else url.pathname = '/employee'
+            return NextResponse.redirect(url)
+        }
+
+        // Manager only routes (if any specific, currently /manager)
+        if (path.startsWith('/manager') && !['admin', 'manager'].includes(role)) {
+            url.pathname = '/employee'
+            return NextResponse.redirect(url)
+        }
+
+        // Employee routes are generally accessible to all, or restricted?
+        // Usually admins/managers can view employee views too, but maybe redirect them?
+        // For now, allow higher roles to access lower role pages if needed, 
+        // OR strictly separate. Existing sidebar implies Admin has own dashboard.
+        // If Admin goes to /employee, maybe let them? Or redirect?
+        // Let's prevent Admin/Manager from landing on /employee dashboard if they have their own.
+        // But they might want to see the "Employee View".
+        // Let's only STRICTLY block lower roles from accessing higher role areas.
+    }
+
+    return response
 }
