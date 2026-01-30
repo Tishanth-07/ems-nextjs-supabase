@@ -62,6 +62,12 @@ This project features a robust, secure, and user-friendly authentication system 
     *   **Quick Access:** Clicking the avatar redirects to the Profile management page.
     *   **Accessibility:** Fully accessible keyboard navigation and screen reader support.
 
+*   **Admin Features:**
+    *   **User Management:** Admins can view all signed-up users and employees, filter by name/email.
+    *   **Add Employee:** Admins can create new employee accounts directly, with auto-generated passwords and role assignment.
+    *   **Real-time Data:** Dashboard stats and lists fetch live data from Supabase, ensuring exact counts.
+    *   **Security:** Strict RLS policies protect sensitive employee data; only Admins can manage records.
+
 *   **Security:**
     *   **Strong Passwords:** Enforced via Zod schemas on both client and server (min 8 chars, complexity rules).
     *   **Email Verification:** Mandatory OTP email verification flow for new accounts.

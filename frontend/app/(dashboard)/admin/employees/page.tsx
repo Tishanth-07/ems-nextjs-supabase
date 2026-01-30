@@ -12,15 +12,26 @@ import {
     TableRow,
 } from "@/components/ui/table"
 
-export default async function EmployeesPage() {
+import { SearchInput } from '@/components/admin/search-input'
+// ... (imports)
+
+interface EmployeesPageProps {
+    searchParams?: Promise<{
+        query?: string
+        page?: string
+    }>
+}
+
+export default async function EmployeesPage(props: EmployeesPageProps) {
+    const searchParams = await props.searchParams;
+    const query = searchParams?.query || '';
+
     const supabase = await createClient()
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) redirect('/login')
 
-    // Fetch all profiles (because new signups are profiles first)
-    // Left join employees to get employment details if they exist
-    const { data: profiles, error } = await supabase
+    let queryBuilder = supabase
         .from('profiles')
         .select(`
             id,
@@ -38,15 +49,26 @@ export default async function EmployeesPage() {
         `)
         .order('created_at', { ascending: false })
 
+    if (query) {
+        // ILIKE filter on full_name or email
+        // Note: Supabase OR syntax is tricky
+        queryBuilder = queryBuilder.or(`full_name.ilike.%${query}%,email.ilike.%${query}%`)
+    }
+
+    const { data: profiles, error } = await queryBuilder
+
     if (error) {
         return <div>Error loading employees: {error.message}</div>
     }
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <h1 className="text-2xl font-bold tracking-tight">Employees & Users</h1>
-                <AddEmployeeDialog />
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <SearchInput placeholder="Search employees..." />
+                    <AddEmployeeDialog />
+                </div>
             </div>
 
             <div className="rounded-md border bg-white dark:bg-card">
