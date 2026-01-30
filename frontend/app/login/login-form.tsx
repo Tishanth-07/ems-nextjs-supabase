@@ -18,11 +18,8 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { LoginFormData, loginSchema } from "@/lib/schema/auth"
 import { toast } from "sonner"
-import { useRouter } from "next/navigation"
-
 export function LoginForm() {
     const [loading, setLoading] = useState(false)
-    const router = useRouter()
 
     const form = useForm<LoginFormData>({
         resolver: zodResolver(loginSchema),
@@ -88,7 +85,7 @@ export function LoginForm() {
                                 <FormItem>
                                     <div className="flex items-center justify-between">
                                         <FormLabel>Password</FormLabel>
-                                        <a href="/forgot-password" class="text-sm font-medium text-primary hover:underline">
+                                        <a href="/forgot-password" className="text-sm font-medium text-primary hover:underline">
                                             Forgot password?
                                         </a>
                                     </div>
