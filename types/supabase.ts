@@ -18,6 +18,8 @@ export interface Database {
           department: string | null
           manager_id: string | null
           photo_url: string | null
+          username: string | null
+          is_verified: boolean | null
           created_at: string
           updated_at: string
         }
@@ -29,6 +31,8 @@ export interface Database {
           department?: string | null
           manager_id?: string | null
           photo_url?: string | null
+          username?: string | null
+          is_verified?: boolean | null
           created_at?: string
           updated_at?: string
         }
@@ -40,6 +44,8 @@ export interface Database {
           department?: string | null
           manager_id?: string | null
           photo_url?: string | null
+          username?: string | null
+          is_verified?: boolean | null
           created_at?: string
           updated_at?: string
         }
@@ -179,6 +185,32 @@ export interface Database {
           gross_pay?: number | null
           net_pay?: number | null
           created_at?: string
+        }
+      }
+      email_verifications: {
+        Row: {
+          id: string
+          email: string
+          otp: string
+          created_at: string
+          expires_at: string
+          verified: boolean | null
+        }
+        Insert: {
+          id?: string
+          email: string
+          otp: string
+          created_at?: string
+          expires_at: string
+          verified?: boolean | null
+        }
+        Update: {
+          id?: string
+          email?: string
+          otp?: string
+          created_at?: string
+          expires_at?: string
+          verified?: boolean | null
         }
       }
     }

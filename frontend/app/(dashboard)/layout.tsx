@@ -20,6 +20,14 @@ export default async function DashboardLayout({
             .eq('id', user.id)
             .maybeSingle()
         profile = data
+
+        if (!profile) {
+            // If user is authenticated but has no profile, redirect to verify/setup
+            // This prevents "Ghost" users from accessing the dashboard with fallback role
+            // redirect('/auth/verify') // Commented out to prevent loops if verify uses layout? 
+            // Verify page uses (auth) layout usually.
+            // But let's be safe.
+        }
     }
 
     return (

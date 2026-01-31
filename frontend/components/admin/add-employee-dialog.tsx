@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { Plus, Loader2, Copy, Check } from "lucide-react"
+import { Plus, Loader2, Copy, Check, Eye, EyeOff } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
@@ -12,11 +12,19 @@ import {
     Dialog,
     DialogContent,
     DialogDescription,
+    DialogFooter,
     DialogHeader,
     DialogTitle,
     DialogTrigger,
-    DialogFooter
 } from "@/components/ui/dialog"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
 import {
     Form,
     FormControl,
@@ -25,14 +33,6 @@ import {
     FormLabel,
     FormMessage,
 } from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
 import { createEmployeeAction } from "@/app/(dashboard)/admin/employees/actions"
 
 const formSchema = z.object({
@@ -41,6 +41,12 @@ const formSchema = z.object({
     role: z.enum(['admin', 'manager', 'employee']),
     department: z.string().min(2, "Department is required"),
     position: z.string().min(2, "Position is required"),
+    password: z.string()
+        .min(8, "Min 8 chars")
+        .regex(/[A-Z]/, "Needs uppercase")
+        .regex(/[a-z]/, "Needs lowercase")
+        .regex(/[0-9]/, "Needs number")
+        .regex(/[!@#$%^&*]/, "Needs special char"),
 })
 
 export function AddEmployeeDialog() {
@@ -48,6 +54,7 @@ export function AddEmployeeDialog() {
     const [isLoading, setIsLoading] = useState(false)
     const [tempPassword, setTempPassword] = useState<string | null>(null)
     const [hasCopied, setHasCopied] = useState(false)
+    const [showPassword, setShowPassword] = useState(false)
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -57,6 +64,7 @@ export function AddEmployeeDialog() {
             role: "employee",
             department: "",
             position: "",
+            password: "",
         },
     })
 
@@ -211,6 +219,70 @@ export function AddEmployeeDialog() {
                                         <FormMessage />
                                     </FormItem>
                                 )}
+                            />
+
+                            <FormField
+                                control={form.control}
+                                name="password"
+                                render={({ field }) => {
+                                    const val = field.value || ""
+                                    const hasMin = val.length >= 8
+                                    const hasUpper = /[A-Z]/.test(val)
+                                    const hasLower = /[a-z]/.test(val)
+                                    const hasNum = /[0-9]/.test(val)
+                                    const hasSpecial = /[!@#$%^&*]/.test(val)
+
+                                    return (
+                                        <FormItem>
+                                            <FormLabel>Temporary Password</FormLabel>
+                                            <FormControl>
+                                                <div className="relative">
+                                                    <Input
+                                                        type={showPassword ? "text" : "password"}
+                                                        placeholder="Enter initial password"
+                                                        {...field}
+                                                        className="pr-10"
+                                                    />
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                                                        onClick={() => setShowPassword((prev) => !prev)}
+                                                    >
+                                                        {showPassword ? (
+                                                            <EyeOff className="h-4 w-4 text-muted-foreground" />
+                                                        ) : (
+                                                            <Eye className="h-4 w-4 text-muted-foreground" />
+                                                        )}
+                                                        <span className="sr-only">Toggle password visibility</span>
+                                                    </Button>
+                                                </div>
+                                            </FormControl>
+                                            <div className="space-y-1 text-xs text-muted-foreground mt-2 border p-2 rounded bg-muted/50">
+                                                <p className="font-medium mb-1">Password Requirements:</p>
+                                                <div className="grid grid-cols-2 gap-1">
+                                                    <div className={`flex items-center gap-1 ${hasMin ? "text-green-600 dark:text-green-400" : ""}`}>
+                                                        {hasMin ? <Check className="h-3 w-3" /> : <div className="h-3 w-3 rounded-full border border-current" />} 8+ Characters
+                                                    </div>
+                                                    <div className={`flex items-center gap-1 ${hasUpper ? "text-green-600 dark:text-green-400" : ""}`}>
+                                                        {hasUpper ? <Check className="h-3 w-3" /> : <div className="h-3 w-3 rounded-full border border-current" />} Uppercase
+                                                    </div>
+                                                    <div className={`flex items-center gap-1 ${hasLower ? "text-green-600 dark:text-green-400" : ""}`}>
+                                                        {hasLower ? <Check className="h-3 w-3" /> : <div className="h-3 w-3 rounded-full border border-current" />} Lowercase
+                                                    </div>
+                                                    <div className={`flex items-center gap-1 ${hasNum ? "text-green-600 dark:text-green-400" : ""}`}>
+                                                        {hasNum ? <Check className="h-3 w-3" /> : <div className="h-3 w-3 rounded-full border border-current" />} Number
+                                                    </div>
+                                                    <div className={`flex items-center gap-1 ${hasSpecial ? "text-green-600 dark:text-green-400" : ""}`}>
+                                                        {hasSpecial ? <Check className="h-3 w-3" /> : <div className="h-3 w-3 rounded-full border border-current" />} Special Char
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )
+                                }}
                             />
 
                             <DialogFooter className="pt-4">

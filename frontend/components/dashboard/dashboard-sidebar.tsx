@@ -135,6 +135,11 @@ export function DashboardSidebar({ user, userRole, ...props }: DashboardSidebarP
                             <span>Log out</span>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
+                    <SidebarMenuItem>
+                        <div className="flex items-center justify-center py-2 text-xs text-muted-foreground uppercase tracking-wider">
+                            Role: {currentRole}
+                        </div>
+                    </SidebarMenuItem>
                 </SidebarMenu>
             </SidebarFooter>
             <SidebarRail />

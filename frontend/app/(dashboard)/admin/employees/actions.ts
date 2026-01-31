@@ -4,113 +4,260 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
+import { generateAndStoreOTP, sendOTPEmail } from '@/app/auth/actions'
+import { generateEmployeeCode } from '@/lib/utils/employee-code'
+import { Database } from '@/types/supabase'
 
 const createEmployeeSchema = z.object({
-    fullName: z.string().min(2, "Name must be at least 2 characters"),
-    email: z.string().email("Invalid email address"),
+    fullName: z.string().min(2, "Name is required"),
+    email: z.string().email("Invalid email"),
     role: z.enum(['admin', 'manager', 'employee']),
     department: z.string().min(2, "Department is required"),
     position: z.string().min(2, "Position is required"),
-    // Optional: password? Or auto-generate.
-    // For now, let's auto-generate a temp password and return it, or set a default.
-    // User prompt: "password: temp/random"
+    password: z.string()
+        .min(8, "Password must be at least 8 characters")
+        .regex(/[A-Z]/, "Must contain at least one uppercase letter")
+        .regex(/[a-z]/, "Must contain at least one lowercase letter")
+        .regex(/[0-9]/, "Must contain at least one number")
+        .regex(/[!@#$%^&*]/, "Must contain at least one special character"),
 })
 
 export async function createEmployeeAction(prevState: any, formData: FormData) {
-    const validatedFields = createEmployeeSchema.safeParse({
-        fullName: formData.get('fullName'),
-        email: formData.get('email'),
-        role: formData.get('role'),
-        department: formData.get('department'),
+    try {
+        const validatedFields = createEmployeeSchema.safeParse({
+            fullName: formData.get('fullName'),
+            email: formData.get('email'),
+            role: formData.get('role'),
+            department: formData.get('department'),
+            position: formData.get('position'),
+            password: formData.get('password'),
+        })
+
+        if (!validatedFields.success) {
+            return { error: 'Invalid fields', errors: validatedFields.error.flatten().fieldErrors }
+        }
+
+        const { fullName, email, role, department, position, password } = validatedFields.data
+
+        const supabase = await createClient()
+
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return { error: 'Unauthorized' }
+
+        const { data: currentUserProfile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single()
+
+        if (currentUserProfile?.role !== 'admin') {
+            return { error: 'Unauthorized: Admin access required' }
+        }
+
+        const supabaseAdmin = createSupabaseClient<Database>(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+        )
+
+        // Use provided password (required by schema now)
+        const finalPassword = password
+
+        // Step 1: Create Auth User
+        const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+            email,
+            password: finalPassword,
+            email_confirm: false,
+            user_metadata: {
+                full_name: fullName,
+                role: role,
+                department: department,
+                is_verified: false
+            }
+        })
+
+        if (createError) {
+            console.error('[createEmployeeAction] Auth user creation failed:', {
+                code: createError.code,
+                message: createError.message,
+                status: createError.status,
+                email: email
+            })
+
+            // Handle specific auth errors
+            if (createError.message?.includes('already registered') || createError.status === 422) {
+                return { error: 'Email already registered. Please use a different email.' }
+            }
+
+            return { error: `Failed to create user account: ${createError.message}` }
+        }
+
+        if (!newUser.user) {
+            console.error('[createEmployeeAction] No user returned from createUser')
+            return { error: 'Failed to create user' }
+        }
+
+        // Step 2: Update Profile
+        const { error: profileError } = await supabaseAdmin
+            .from('profiles')
+            .update({
+                department,
+                role,
+                full_name: fullName,
+                is_verified: false
+            })
+            .eq('id', newUser.user.id)
+
+        if (profileError) {
+            console.error('[createEmployeeAction] Profile update error:', {
+                code: profileError.code,
+                message: profileError.message,
+                details: profileError.details,
+                hint: profileError.hint,
+                userId: newUser.user.id
+            })
+            // Continue even if profile update fails - trigger should have created it
+        }
+
+        // Step 3: Generate Employee Code
+        let employeeCode: string
+        try {
+            employeeCode = await generateEmployeeCode(supabaseAdmin)
+            console.log('[createEmployeeAction] Generated employee code:', employeeCode)
+        } catch (codeError: any) {
+            console.error('[createEmployeeAction] Employee code generation failed:', codeError)
+            return {
+                error: `User created but employee code generation failed: ${codeError.message}`,
+                tempPassword: finalPassword
+            }
+        }
+
+        // Step 4: Insert into Employees table
+        const { error: employeeError } = await supabaseAdmin
+            .from('employees')
+            .insert({
+                profile_id: newUser.user.id,
+                employee_code: employeeCode,
+                position: position,
+                status: 'active',
+                hire_date: new Date().toISOString().split('T')[0]
+            })
+
+        if (employeeError) {
+            console.error('[createEmployeeAction] Employee insert error:', {
+                code: employeeError.code,
+                message: employeeError.message,
+                details: employeeError.details,
+                hint: employeeError.hint,
+                employeeCode: employeeCode,
+                profileId: newUser.user.id
+            })
+
+            // Handle specific PostgreSQL errors
+            let errorMessage = 'User created but employee record failed: '
+
+            if (employeeError.code === '23505') {
+                // Unique constraint violation
+                errorMessage += 'Employee code already exists. Please try again.'
+            } else if (employeeError.code === '23502') {
+                // Not-null constraint violation
+                errorMessage += `Missing required field: ${employeeError.message}`
+            } else if (employeeError.code === '23503') {
+                // Foreign key violation
+                errorMessage += 'Profile reference is invalid.'
+            } else {
+                errorMessage += employeeError.message
+            }
+
+            return { error: errorMessage, tempPassword: finalPassword }
+        }
+
+        // Step 5: Send Verification OTP
+        try {
+            const otp = await generateAndStoreOTP(email)
+            const emailRes = await sendOTPEmail(email, otp)
+            if (emailRes.error) {
+                console.error('[createEmployeeAction] Failed to send verification email:', emailRes.error)
+                return {
+                    success: true,
+                    tempPassword: finalPassword,
+                    employeeCode: employeeCode,
+                    message: `Employee created (Code: ${employeeCode}), but verification email failed.`,
+                    warning: true
+                }
+            }
+        } catch (e: any) {
+            console.error('[createEmployeeAction] Error generating OTP:', e)
+            return {
+                success: true,
+                tempPassword: finalPassword,
+                employeeCode: employeeCode,
+                message: `Employee created (Code: ${employeeCode}), but OTP logic failed.`,
+                warning: true
+            }
+        }
+
+        revalidatePath('/admin/employees')
+
+        return {
+            success: true,
+            tempPassword: finalPassword,
+            employeeCode: employeeCode,
+            message: `Employee created successfully! Code: ${employeeCode}. Verification email sent.`
+        }
+    } catch (error: any) {
+        console.error('[createEmployeeAction] Unexpected error:', {
+            name: error.name,
+            message: error.message,
+            stack: error.stack,
+            code: error.code
+        })
+        return {
+            error: `An unexpected error occurred: ${error.message}. Please contact support if this persists.`
+        }
+    }
+}
+
+const updateEmployeeSchema = z.object({
+    id: z.string().uuid(),
+    position: z.string().min(2, "Position is required"),
+    salary_rate: z.coerce.number().min(0, "Salary must be non-negative"),
+    status: z.enum(['active', 'on_leave', 'terminated', 'resigned'])
+})
+
+export async function updateEmployee(formData: FormData) {
+    const validatedFields = updateEmployeeSchema.safeParse({
+        id: formData.get('id'),
         position: formData.get('position'),
+        salary_rate: formData.get('salary_rate'),
+        status: formData.get('status'),
     })
 
     if (!validatedFields.success) {
         return { error: 'Invalid fields', errors: validatedFields.error.flatten().fieldErrors }
     }
 
-    const { fullName, email, role, department, position } = validatedFields.data
-
+    const { id, position, salary_rate, status } = validatedFields.data
     const supabase = await createClient()
 
-    // 1. Verify Admin Access
+    // 1. Check Admin
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: 'Unauthorized' }
 
-    const { data: currentUserProfile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single()
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+    if (profile?.role !== 'admin') return { error: 'Unauthorized' }
 
-    if (currentUserProfile?.role !== 'admin') {
-        return { error: 'Unauthorized: Admin access required' }
-    }
-
-    // 2. Create User via Admin API
-    // We use the service_role key to bypass RLS and use admin auth methods
-    const supabaseAdmin = createSupabaseClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
-
-    const tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8)
-
-    const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-        email,
-        password: tempPassword,
-        email_confirm: true, // Auto-confirm so they can login immediately
-        user_metadata: {
-            full_name: fullName,
-            username: email.split('@')[0], // Default username
-            role: role, // Trigger should use this
-            department: department // Trigger might not use this, so we might need to update profile
-        }
-    })
-
-    if (createError) {
-        return { error: createError.message }
-    }
-
-    if (!newUser.user) {
-        return { error: 'Failed to create user' }
-    }
-
-    // 3. Ensure Profile is updated (in case trigger missed department or role)
-    // The trigger handles ID, email, username, role, full_name.
-    // But does it handle 'department'?
-    // My trigger function was:
-    // INSERT INTO profiles ... VALUES (..., COALESCE(meta->>'role'), meta->>'full_name', ...)
-    // It did NOT insert department.
-    // So we must update the profile to set department.
-
-    // We also need to insert into 'employees' table.
-
-    const { error: profileUpdateError } = await supabaseAdmin
-        .from('profiles')
-        .update({ department: department })
-        .eq('id', newUser.user.id)
-
-    if (profileUpdateError) {
-        // Log but don't fail, as user is created
-        console.error('Error updating profile department:', profileUpdateError)
-    }
-
-    // 4. Insert into Employees table
-    const { error: employeeError } = await supabaseAdmin
+    // 2. Update Employee
+    const { error } = await supabase
         .from('employees')
-        .insert({
-            profile_id: newUser.user.id,
-            position: position,
-            status: 'active',
-            hire_date: new Date().toISOString().split('T')[0] // Today
-        })
+        .update({ position, salary_rate, status })
+        .eq('id', id)
 
-    if (employeeError) {
-        return { error: 'User created but failed to create employee record: ' + employeeError.message, tempPassword }
+    if (error) {
+        return { error: 'Update failed: ' + error.message }
     }
 
     revalidatePath('/admin/employees')
+    revalidatePath(`/admin/employees/${id}`)
 
-    return { success: true, tempPassword, message: `Employee created! Password: ${tempPassword}` }
+    return { success: true }
 }

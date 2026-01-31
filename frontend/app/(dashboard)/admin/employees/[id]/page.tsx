@@ -2,7 +2,8 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { EmployeeForm } from './employee-form'
 
-export default async function EditEmployeePage({ params }: { params: { id: string } }) {
+export default async function EditEmployeePage(props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     const supabase = await createClient()
     const { id } = params
 
