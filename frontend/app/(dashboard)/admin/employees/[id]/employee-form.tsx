@@ -1,6 +1,6 @@
 'use client'
 
-import { updateEmployee } from '../actions'
+import { updateEmployeeAction } from '../actions'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { useState } from 'react'
@@ -10,7 +10,7 @@ export function EmployeeForm({ employee }: { employee: any }) {
 
     async function handleSubmit(formData: FormData) {
         setLoading(true)
-        const result = await updateEmployee(formData)
+        const result = await updateEmployeeAction(null, formData)
         setLoading(false)
 
         if (result?.error) toast.error(result.error)
