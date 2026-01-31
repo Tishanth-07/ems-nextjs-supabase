@@ -33,6 +33,7 @@ import {
     FormLabel,
     FormMessage,
 } from "@/components/ui/form"
+import { VerifyEmailDialog } from "@/components/admin/verify-email-dialog"
 import { createEmployeeAction } from "@/app/(dashboard)/admin/employees/actions"
 
 const formSchema = z.object({
@@ -56,7 +57,12 @@ export function AddEmployeeDialog() {
     const [employeeCode, setEmployeeCode] = useState<string | null>(null)
     const [hasCopied, setHasCopied] = useState(false)
     const [showPassword, setShowPassword] = useState(false)
-    const [skipEmailVerification, setSkipEmailVerification] = useState(false)
+
+    // For verification dialog
+    const [showVerifyDialog, setShowVerifyDialog] = useState(false)
+    const [newUserId, setNewUserId] = useState<string | null>(null)
+    const [newUserEmail, setNewUserEmail] = useState<string | null>(null)
+    const [newUserName, setNewUserName] = useState<string | null>(null)
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -79,7 +85,7 @@ export function AddEmployeeDialog() {
         Object.entries(values).forEach(([key, value]) => {
             formData.append(key, value)
         })
-        formData.append('skipEmailVerification', skipEmailVerification.toString())
+        // No longer sending skipEmailVerification
 
         const result = await createEmployeeAction(null, formData)
 
@@ -93,11 +99,18 @@ export function AddEmployeeDialog() {
             const message = result.employeeCode
                 ? `Employee created with code: ${result.employeeCode}`
                 : "Employee created successfully"
-            toast.success(message)
+            toast.success(message + " - Verification email sent!")
             setTempPassword(result.tempPassword)
             setEmployeeCode(result.employeeCode || null)
+
+            // Store new user info for verification dialog
+            // NOTE: In production, you'd get userId from the result
+            // For now, we'll need to update the action to return userId
+            setNewUserEmail(values.email)
+            setNewUserName(values.fullName)
+
             form.reset()
-            // Don't close dialog yet, let them copy password
+            // Show success, user will verify via email
         } else if (result?.warning) {
             toast.warning(result.message || "Partial success")
             setTempPassword(result.tempPassword || null)

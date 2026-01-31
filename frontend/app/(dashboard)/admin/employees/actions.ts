@@ -59,23 +59,19 @@ export async function createEmployeeAction(prevState: any, formData: FormData) {
             process.env.SUPABASE_SERVICE_ROLE_KEY!
         )
 
-        const finalPassword = password // Assuming generateRandomPassword is defined elsewhere or will be added
+        const finalPassword = password
         console.log('[createEmployeeAction] Starting employee creation for:', email)
 
-        // Get skip verification flag
-        const skipEmailVerification = formData.get('skipEmailVerification') === 'true'
-        const isVerified = skipEmailVerification // If admin skips verification, mark as verified
-
-        // Step 1: Create Auth User
+        // Step 1: Create Auth User (always unverified)
         const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
             email,
             password: finalPassword,
-            email_confirm: skipEmailVerification, // If skipping, auto-confirm email
+            email_confirm: false, // Always require email verification
             user_metadata: {
                 full_name: fullName,
                 role: role,
                 department: department,
-                is_verified: isVerified // Pass to trigger
+                is_verified: false // Will be set to true after email verification
             }
         })
 
@@ -175,44 +171,50 @@ export async function createEmployeeAction(prevState: any, formData: FormData) {
             return { error: errorMessage, tempPassword: finalPassword }
         }
 
-        // Step 5: Send Verification Email (only if not skipped)
-        if (!skipEmailVerification) {
-            try {
-                const otp = await generateAndStoreOTP(email)
-                const emailRes = await sendOTPEmail(email, otp)
-                if (emailRes.error) {
-                    console.error('[createEmployeeAction] Failed to send verification email:', emailRes.error)
-                    return {
-                        success: true,
-                        tempPassword: finalPassword,
-                        employeeCode: employeeCode,
-                        message: `Employee created (Code: ${employeeCode}), but verification email failed.`,
-                        warning: true
-                    }
-                }
-            } catch (e: any) {
-                console.error('[createEmployeeAction] Error generating OTP:', e)
+        // Step 5: Send Verification Email (ALWAYS send - no skip option)
+        try {
+            const { sendVerificationCodeAction } = await import('./verification-actions')
+            const verificationResult = await sendVerificationCodeAction(
+                newUser.user.id,
+                email,
+                fullName
+            )
+
+            if (verificationResult.error) {
+                console.error('[createEmployeeAction] Failed to send verification email:', verificationResult.error)
                 return {
                     success: true,
                     tempPassword: finalPassword,
                     employeeCode: employeeCode,
-                    message: `Employee created (Code: ${employeeCode}), but OTP logic failed.`,
+                    message: `Employee created (Code: ${employeeCode}), but verification email failed. Please resend verification code.`,
                     warning: true
                 }
+            }
+
+            console.log('[createEmployeeAction] Verification email sent successfully')
+
+            // For development, include the code in response
+            if (process.env.NODE_ENV === 'development' && verificationResult.devCode) {
+                console.log(`[DEV] Verification code for ${email}: ${verificationResult.devCode}`)
+            }
+        } catch (e: any) {
+            console.error('[createEmployeeAction] Error sending verification:', e)
+            return {
+                success: true,
+                tempPassword: finalPassword,
+                employeeCode: employeeCode,
+                message: `Employee created (Code: ${employeeCode}), but verification system failed.`,
+                warning: true
             }
         }
 
         revalidatePath('/admin/employees')
 
-        const message = skipEmailVerification
-            ? `Employee created successfully! Code: ${employeeCode}. Email marked as verified.`
-            : `Employee created successfully! Code: ${employeeCode}. Verification email sent.`
-
         return {
             success: true,
             tempPassword: finalPassword,
             employeeCode: employeeCode,
-            message
+            message: `Employee created successfully! Code: ${employeeCode}. Verification email sent to ${email}.`
         }
     } catch (error: any) {
         console.error('[createEmployeeAction] Unexpected error:', {
