@@ -1,8 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { AddEmployeeDialog } from '@/components/admin/add-employee-dialog'
+import { EditEmployeeDialog } from '@/components/admin/edit-employee-dialog'
+import { DeleteEmployeeDialog } from '@/components/admin/delete-employee-dialog'
 import {
     Table,
     TableBody,
@@ -112,9 +113,13 @@ export default async function EmployeesPage(props: EmployeesPageProps) {
                                         )}
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        <Button variant="ghost" size="sm" asChild>
-                                            <Link href={`/admin/employees/${profile.id}`}>Edit</Link>
-                                        </Button>
+                                        <div className="flex justify-end gap-1">
+                                            <EditEmployeeDialog employee={profile} />
+                                            <DeleteEmployeeDialog
+                                                employeeId={profile.id}
+                                                employeeName={profile.full_name || 'Unknown'}
+                                            />
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             )

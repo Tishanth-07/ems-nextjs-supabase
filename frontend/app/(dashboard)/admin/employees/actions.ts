@@ -228,48 +228,74 @@ export async function createEmployeeAction(prevState: any, formData: FormData) {
 }
 
 const updateEmployeeSchema = z.object({
-    id: z.string().uuid(),
+    profile_id: z.string().uuid(),
+    full_name: z.string().min(2, "Name is required"),
+    email: z.string().email("Invalid email"),
+    role: z.enum(['admin', 'manager', 'employee']),
+    department: z.string().min(2, "Department is required"),
     position: z.string().min(2, "Position is required"),
-    salary_rate: z.coerce.number().min(0, "Salary must be non-negative"),
+    salary_rate: z.coerce.number().min(0, "Salary must be non-negative").optional(),
     status: z.enum(['active', 'on_leave', 'terminated', 'resigned'])
 })
 
-export async function updateEmployee(formData: FormData) {
-    const validatedFields = updateEmployeeSchema.safeParse({
-        id: formData.get('id'),
-        position: formData.get('position'),
-        salary_rate: formData.get('salary_rate'),
-        status: formData.get('status'),
-    })
+export async function updateEmployeeAction(prevState: any, formData: FormData) {
+    try {
+        const validatedFields = updateEmployeeSchema.safeParse({
+            profile_id: formData.get('profile_id'),
+            full_name: formData.get('full_name'),
+            email: formData.get('email'),
+            role: formData.get('role'),
+            department: formData.get('department'),
+            position: formData.get('position'),
+            salary_rate: formData.get('salary_rate'),
+            status: formData.get('status'),
+        })
 
-    if (!validatedFields.success) {
-        return { error: 'Invalid fields', errors: validatedFields.error.flatten().fieldErrors }
+        if (!validatedFields.success) {
+            return { error: 'Invalid fields', errors: validatedFields.error.flatten().fieldErrors }
+        }
+
+        const { profile_id, full_name, email, role, department, position, salary_rate, status } = validatedFields.data
+
+        const supabase = await createClient()
+
+        // Check if user is admin
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return { error: 'Unauthorized' }
+
+        const { data: adminProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+        if (adminProfile?.role !== 'admin') return { error: 'Only admins can update employees' }
+
+        // Update profiles table
+        const { error: profileError } = await supabase
+            .from('profiles')
+            .update({ full_name, email, role, department })
+            .eq('id', profile_id)
+
+        if (profileError) {
+            console.error('[updateEmployeeAction] Profile update failed:', profileError)
+            return { error: `Failed to update profile: ${profileError.message}` }
+        }
+
+        // Update employees table
+        const { error: employeeError } = await (supabase as any)
+            .from('employees')
+            .update({ position, salary_rate, status })
+            .eq('profile_id', profile_id)
+
+        if (employeeError) {
+            console.error('[updateEmployeeAction] Employee update failed:', employeeError)
+            return { error: `Failed to update employee data: ${employeeError.message}` }
+        }
+
+        revalidatePath('/admin/employees')
+        revalidatePath(`/admin/employees/${profile_id}`)
+
+        return { success: true, message: 'Employee updated successfully' }
+    } catch (error: any) {
+        console.error('[updateEmployeeAction] Error:', error)
+        return { error: error.message || 'Failed to update employee' }
     }
-
-    const { id, position, salary_rate, status } = validatedFields.data
-    const supabase = await createClient()
-
-    // 1. Check Admin
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return { error: 'Unauthorized' }
-
-    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-    if (profile?.role !== 'admin') return { error: 'Unauthorized' }
-
-    // 2. Update Employee
-    const { error } = await (supabase as any)
-        .from('employees')
-        .update({ position, salary_rate, status })
-        .eq('id', id)
-
-    if (error) {
-        return { error: 'Update failed: ' + error.message }
-    }
-
-    revalidatePath('/admin/employees')
-    revalidatePath(`/admin/employees/${id}`)
-
-    return { success: true }
 }
 
 export async function resendVerificationEmail(email: string) {
@@ -317,5 +343,55 @@ export async function resendVerificationEmail(email: string) {
     } catch (error: any) {
         console.error('[resendVerificationEmail] Error:', error)
         return { error: error.message || 'Failed to resend verification email' }
+    }
+}
+
+export async function deleteEmployeeAction(userId: string) {
+    try {
+        const supabase = await createClient()
+
+        // Check if caller is admin
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return { error: 'Unauthorized' }
+
+        const { data: adminProfile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single()
+
+        if (adminProfile?.role !== 'admin') {
+            return { error: 'Only admins can delete employees' }
+        }
+
+        // Create admin client for auth deletion
+        const supabaseAdmin = createSupabaseClient<Database>(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!,
+            {
+                auth: {
+                    autoRefreshToken: false,
+                    persistSession: false
+                }
+            }
+        )
+
+        console.log('[deleteEmployeeAction] Deleting employee:', userId)
+
+        // Delete from auth.users (cascade deletes profiles and employees)
+        const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId)
+
+        if (authError) {
+            console.error('[deleteEmployeeAction] Auth deletion failed:', authError)
+            return { error: `Failed to delete user: ${authError.message}` }
+        }
+
+        console.log('[deleteEmployeeAction] Employee deleted successfully')
+        revalidatePath('/admin/employees')
+
+        return { success: true, message: 'Employee deleted successfully' }
+    } catch (error: any) {
+        console.error('[deleteEmployeeAction] Error:', error)
+        return { error: error.message || 'Failed to delete employee' }
     }
 }
