@@ -121,7 +121,7 @@ export async function createEmployeeAction(prevState: any, formData: FormData) {
         // Step 3: Generate Employee Code
         let employeeCode: string
         try {
-            employeeCode = await generateEmployeeCode(supabaseAdmin)
+            employeeCode = await generateEmployeeCode(supabaseAdmin as any)
             console.log('[createEmployeeAction] Generated employee code:', employeeCode)
         } catch (codeError: any) {
             console.error('[createEmployeeAction] Employee code generation failed:', codeError)
@@ -132,7 +132,7 @@ export async function createEmployeeAction(prevState: any, formData: FormData) {
         }
 
         // Step 4: Insert into Employees table
-        const { error: employeeError } = await supabaseAdmin
+        const { error: employeeError } = await (supabaseAdmin as any)
             .from('employees')
             .insert({
                 profile_id: newUser.user.id,
@@ -247,7 +247,7 @@ export async function updateEmployee(formData: FormData) {
     if (profile?.role !== 'admin') return { error: 'Unauthorized' }
 
     // 2. Update Employee
-    const { error } = await supabase
+    const { error } = await (supabase as any)
         .from('employees')
         .update({ position, salary_rate, status })
         .eq('id', id)

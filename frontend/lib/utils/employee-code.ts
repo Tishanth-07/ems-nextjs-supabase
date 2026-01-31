@@ -32,7 +32,7 @@ export async function generateEmployeeCode(
 
         if (data && data.length > 0) {
             // Extract the numeric part from the last employee code
-            const lastCode = data[0].employee_code
+            const lastCode = (data[0] as any).employee_code
             const numericPart = lastCode.replace(prefix, '')
             const lastNumber = parseInt(numericPart, 10)
 
