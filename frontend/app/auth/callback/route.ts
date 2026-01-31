@@ -8,8 +8,20 @@ export async function GET(request: Request) {
 
     if (code) {
         const supabase = await createClient()
-        const { error } = await supabase.auth.exchangeCodeForSession(code)
-        if (!error) {
+        const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+
+        if (!error && data.user) {
+            // Update is_verified in profiles table after successful email verification
+            const { error: updateError } = await supabase
+                .from('profiles')
+                .update({ is_verified: true })
+                .eq('id', data.user.id)
+
+            if (updateError) {
+                console.error('[Auth Callback] Failed to update is_verified:', updateError)
+                // Don't block the login, just log the error
+            }
+
             return NextResponse.redirect(`${origin}${next}`)
         }
     }

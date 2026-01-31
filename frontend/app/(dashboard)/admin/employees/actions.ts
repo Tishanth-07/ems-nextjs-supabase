@@ -261,3 +261,51 @@ export async function updateEmployee(formData: FormData) {
 
     return { success: true }
 }
+
+export async function resendVerificationEmail(email: string) {
+    try {
+        const supabase = await createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+
+        if (!user) {
+            return { error: 'Unauthorized' }
+        }
+
+        // Check if admin
+        const { data: adminProfile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single()
+
+        if (!adminProfile || adminProfile.role !== 'admin') {
+            return { error: 'Only admins can resend verification emails' }
+        }
+
+        // Create admin client
+        const supabaseAdmin = createSupabaseClient<Database>(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!,
+            {
+                auth: {
+                    autoRefreshToken: false,
+                    persistSession: false
+                }
+            }
+        )
+
+        // Send verification email using OTP system
+        const otp = await generateAndStoreOTP(email)
+        const emailRes = await sendOTPEmail(email, otp)
+
+        if (emailRes.error) {
+            console.error('[resendVerificationEmail] Failed to send email:', emailRes.error)
+            return { error: 'Failed to send verification email' }
+        }
+
+        return { success: true, message: 'Verification email sent successfully' }
+    } catch (error: any) {
+        console.error('[resendVerificationEmail] Error:', error)
+        return { error: error.message || 'Failed to resend verification email' }
+    }
+}

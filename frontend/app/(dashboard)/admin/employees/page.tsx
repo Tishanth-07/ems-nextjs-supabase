@@ -79,7 +79,7 @@ export default async function EmployeesPage(props: EmployeesPageProps) {
                             <TableHead>Email</TableHead>
                             <TableHead>Role</TableHead>
                             <TableHead>Department</TableHead>
-                            <TableHead>Status</TableHead>
+                            <TableHead>Verification</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -101,10 +101,15 @@ export default async function EmployeesPage(props: EmployeesPageProps) {
                                     <TableCell className="capitalize">{profile.role}</TableCell>
                                     <TableCell>{profile.department || '-'}</TableCell>
                                     <TableCell>
-                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize
-                                            ${status === 'active' || status === 'verified' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400'}`}>
-                                            {status}
-                                        </span>
+                                        {profile.is_verified ? (
+                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                                                ✓ Verified
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
+                                                ⏳ Pending
+                                            </span>
+                                        )}
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <Button variant="ghost" size="sm" asChild>
