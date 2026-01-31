@@ -53,6 +53,7 @@ export function AddEmployeeDialog() {
     const [open, setOpen] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
     const [tempPassword, setTempPassword] = useState<string | null>(null)
+    const [employeeCode, setEmployeeCode] = useState<string | null>(null)
     const [hasCopied, setHasCopied] = useState(false)
     const [showPassword, setShowPassword] = useState(false)
 
@@ -71,6 +72,7 @@ export function AddEmployeeDialog() {
     async function onSubmit(values: z.infer<typeof formSchema>) {
         setIsLoading(true)
         setTempPassword(null)
+        setEmployeeCode(null)
 
         const formData = new FormData()
         Object.entries(values).forEach(([key, value]) => {
@@ -82,12 +84,22 @@ export function AddEmployeeDialog() {
         setIsLoading(false)
 
         if (result?.error) {
-            toast.error(result.error)
+            toast.error(result.error, {
+                description: "Please check the details and try again."
+            })
         } else if (result?.success) {
-            toast.success("Employee created successfully")
+            const message = result.employeeCode
+                ? `Employee created with code: ${result.employeeCode}`
+                : "Employee created successfully"
+            toast.success(message)
             setTempPassword(result.tempPassword)
+            setEmployeeCode(result.employeeCode || null)
             form.reset()
             // Don't close dialog yet, let them copy password
+        } else if (result?.warning) {
+            toast.warning(result.message || "Partial success")
+            setTempPassword(result.tempPassword || null)
+            setEmployeeCode(result.employeeCode || null)
         }
     }
 
@@ -103,6 +115,7 @@ export function AddEmployeeDialog() {
     const handleClose = () => {
         setOpen(false)
         setTempPassword(null)
+        setEmployeeCode(null)
         form.reset()
     }
 
@@ -123,6 +136,16 @@ export function AddEmployeeDialog() {
 
                 {tempPassword ? (
                     <div className="space-y-4 py-4">
+                        {employeeCode && (
+                            <div className="rounded-md bg-primary/10 p-4 border border-primary/20">
+                                <div className="text-sm font-medium text-muted-foreground mb-1">
+                                    Employee Code
+                                </div>
+                                <div className="text-2xl font-bold text-primary">
+                                    {employeeCode}
+                                </div>
+                            </div>
+                        )}
                         <div className="rounded-md bg-muted p-4">
                             <div className="text-sm font-medium text-muted-foreground mb-1">
                                 Temporary Password
@@ -135,7 +158,7 @@ export function AddEmployeeDialog() {
                             </div>
                         </div>
                         <p className="text-sm text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded border border-yellow-200 dark:border-yellow-800">
-                            Please copy this password safely. It will not be shown again.
+                            ⚠️ Please save these credentials securely. The password will not be shown again.
                         </p>
                         <DialogFooter>
                             <Button onClick={handleClose} className="w-full">Done</Button>
