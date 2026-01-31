@@ -3,15 +3,15 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-    rxDashboard,
+    LayoutDashboard,
     Users,
     Calendar,
     FileText,
     Settings,
     LogOut,
-    Clock
-} from 'lucide-react' // Note: lucide-react exports might vary, adjusting imports below
-import { LayoutDashboard, UserCircle } from 'lucide-react'
+    Clock,
+    UserCircle
+} from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 
