@@ -56,6 +56,7 @@ export function AddEmployeeDialog() {
     const [employeeCode, setEmployeeCode] = useState<string | null>(null)
     const [hasCopied, setHasCopied] = useState(false)
     const [showPassword, setShowPassword] = useState(false)
+    const [skipEmailVerification, setSkipEmailVerification] = useState(false)
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -78,6 +79,7 @@ export function AddEmployeeDialog() {
         Object.entries(values).forEach(([key, value]) => {
             formData.append(key, value)
         })
+        formData.append('skipEmailVerification', skipEmailVerification.toString())
 
         const result = await createEmployeeAction(null, formData)
 
@@ -308,6 +310,26 @@ export function AddEmployeeDialog() {
                                 }}
                             />
 
+                            <div className="flex items-start space-x-3 rounded-md border p-4 bg-muted/50">
+                                <input
+                                    type="checkbox"
+                                    id="skipEmailVerification"
+                                    checked={skipEmailVerification}
+                                    onChange={(e) => setSkipEmailVerification(e.target.checked)}
+                                    className="mt-1 h-4 w-4 rounded border-gray-300"
+                                />
+                                <div className="space-y-1 leading-none">
+                                    <label
+                                        htmlFor="skipEmailVerification"
+                                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                                    >
+                                        Mark email as verified
+                                    </label>
+                                    <p className="text-sm text-muted-foreground">
+                                        Employee can login immediately without email verification. Only use for trusted sources (e.g., HR records).
+                                    </p>
+                                </div>
+                            </div>
                             <DialogFooter className="pt-4">
                                 <Button type="submit" disabled={isLoading} className="w-full">
                                     {isLoading ? (

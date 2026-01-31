@@ -59,19 +59,23 @@ export async function createEmployeeAction(prevState: any, formData: FormData) {
             process.env.SUPABASE_SERVICE_ROLE_KEY!
         )
 
-        // Use provided password (required by schema now)
-        const finalPassword = password
+        const finalPassword = password // Assuming generateRandomPassword is defined elsewhere or will be added
+        console.log('[createEmployeeAction] Starting employee creation for:', email)
+
+        // Get skip verification flag
+        const skipEmailVerification = formData.get('skipEmailVerification') === 'true'
+        const isVerified = skipEmailVerification // If admin skips verification, mark as verified
 
         // Step 1: Create Auth User
         const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
             email,
             password: finalPassword,
-            email_confirm: false,
+            email_confirm: skipEmailVerification, // If skipping, auto-confirm email
             user_metadata: {
                 full_name: fullName,
                 role: role,
                 department: department,
-                is_verified: false
+                is_verified: isVerified // Pass to trigger
             }
         })
 
@@ -171,38 +175,44 @@ export async function createEmployeeAction(prevState: any, formData: FormData) {
             return { error: errorMessage, tempPassword: finalPassword }
         }
 
-        // Step 5: Send Verification OTP
-        try {
-            const otp = await generateAndStoreOTP(email)
-            const emailRes = await sendOTPEmail(email, otp)
-            if (emailRes.error) {
-                console.error('[createEmployeeAction] Failed to send verification email:', emailRes.error)
+        // Step 5: Send Verification Email (only if not skipped)
+        if (!skipEmailVerification) {
+            try {
+                const otp = await generateAndStoreOTP(email)
+                const emailRes = await sendOTPEmail(email, otp)
+                if (emailRes.error) {
+                    console.error('[createEmployeeAction] Failed to send verification email:', emailRes.error)
+                    return {
+                        success: true,
+                        tempPassword: finalPassword,
+                        employeeCode: employeeCode,
+                        message: `Employee created (Code: ${employeeCode}), but verification email failed.`,
+                        warning: true
+                    }
+                }
+            } catch (e: any) {
+                console.error('[createEmployeeAction] Error generating OTP:', e)
                 return {
                     success: true,
                     tempPassword: finalPassword,
                     employeeCode: employeeCode,
-                    message: `Employee created (Code: ${employeeCode}), but verification email failed.`,
+                    message: `Employee created (Code: ${employeeCode}), but OTP logic failed.`,
                     warning: true
                 }
-            }
-        } catch (e: any) {
-            console.error('[createEmployeeAction] Error generating OTP:', e)
-            return {
-                success: true,
-                tempPassword: finalPassword,
-                employeeCode: employeeCode,
-                message: `Employee created (Code: ${employeeCode}), but OTP logic failed.`,
-                warning: true
             }
         }
 
         revalidatePath('/admin/employees')
 
+        const message = skipEmailVerification
+            ? `Employee created successfully! Code: ${employeeCode}. Email marked as verified.`
+            : `Employee created successfully! Code: ${employeeCode}. Verification email sent.`
+
         return {
             success: true,
             tempPassword: finalPassword,
             employeeCode: employeeCode,
-            message: `Employee created successfully! Code: ${employeeCode}. Verification email sent.`
+            message
         }
     } catch (error: any) {
         console.error('[createEmployeeAction] Unexpected error:', {
