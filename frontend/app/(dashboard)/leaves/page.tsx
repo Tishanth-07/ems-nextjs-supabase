@@ -1,9 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { cancelLeave } from './actions'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { LeaveRequestForm } from './leave-request-form'
+import { CancelLeaveButton } from './cancel-leave-button'
 import {
     Table,
     TableBody,
@@ -77,12 +77,7 @@ export default async function LeavesPage() {
                                 </TableCell>
                                 <TableCell className="text-right">
                                     {leave.status === 'pending' && (
-                                        <form action={cancelLeave}>
-                                            <input type="hidden" name="id" value={leave.id} />
-                                            <Button variant="ghost" size="sm" type="submit" className="text-red-600 hover:text-red-700">
-                                                Cancel
-                                            </Button>
-                                        </form>
+                                        <CancelLeaveButton leaveId={leave.id} />
                                     )}
                                 </TableCell>
                             </TableRow>
