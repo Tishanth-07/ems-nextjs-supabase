@@ -32,7 +32,7 @@ import {
     SelectValue,
 } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
-import { updateEmployeeAction } from './actions'
+import { updateEmployeeAction } from '@/app/(dashboard)/admin/employees/actions'
 
 const formSchema = z.object({
     profile_id: z.string().uuid(),
@@ -106,9 +106,7 @@ export function EditEmployeeDialog({ employee }: EditEmployeeDialogProps) {
                 </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-                <Dialog
-
-                    Header>
+                <DialogHeader>
                     <DialogTitle>Edit Employee</DialogTitle>
                     <DialogDescription>
                         Update employee information. All fields are required.

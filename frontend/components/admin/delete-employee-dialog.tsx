@@ -61,7 +61,7 @@ export function DeleteEmployeeDialog({ employeeId, employeeName }: DeleteEmploye
                 <AlertDialogFooter>
                     <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
                     <AlertDialogAction
-                        onClick={(e) => {
+                        onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                             e.preventDefault()
                             handleDelete()
                         }}
