@@ -62,16 +62,19 @@ export async function createEmployeeAction(prevState: any, formData: FormData) {
         const finalPassword = password
         console.log('[createEmployeeAction] Starting employee creation for:', email)
 
-        // Step 1: Create Auth User (always unverified)
+        // Check if email was pre-verified
+        const emailVerified = formData.get('emailVerified') === 'true'
+
+        // Step 1: Create Auth User with email_confirm based on verification status
         const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
             email,
             password: finalPassword,
-            email_confirm: false, // Always require email verification
+            email_confirm: emailVerified, // Set to true if pre-verified!
             user_metadata: {
                 full_name: fullName,
                 role: role,
                 department: department,
-                is_verified: false // Will be set to true after email verification
+                is_verified: emailVerified // Will be true if pre-verified
             }
         })
 
@@ -103,7 +106,7 @@ export async function createEmployeeAction(prevState: any, formData: FormData) {
                 department,
                 role,
                 full_name: fullName,
-                is_verified: false
+                is_verified: emailVerified // Set based on pre-verification
             })
             .eq('id', newUser.user.id)
 
@@ -171,42 +174,8 @@ export async function createEmployeeAction(prevState: any, formData: FormData) {
             return { error: errorMessage, tempPassword: finalPassword }
         }
 
-        // Step 5: Send Verification Email (ALWAYS send - no skip option)
-        try {
-            const { sendVerificationCodeAction } = await import('./verification-actions')
-            const verificationResult = await sendVerificationCodeAction(
-                newUser.user.id,
-                email,
-                fullName
-            )
-
-            if (verificationResult.error) {
-                console.error('[createEmployeeAction] Failed to send verification email:', verificationResult.error)
-                return {
-                    success: true,
-                    tempPassword: finalPassword,
-                    employeeCode: employeeCode,
-                    message: `Employee created (Code: ${employeeCode}), but verification email failed. Please resend verification code.`,
-                    warning: true
-                }
-            }
-
-            console.log('[createEmployeeAction] Verification email sent successfully')
-
-            // For development, include the code in response
-            if (process.env.NODE_ENV === 'development' && verificationResult.devCode) {
-                console.log(`[DEV] Verification code for ${email}: ${verificationResult.devCode}`)
-            }
-        } catch (e: any) {
-            console.error('[createEmployeeAction] Error sending verification:', e)
-            return {
-                success: true,
-                tempPassword: finalPassword,
-                employeeCode: employeeCode,
-                message: `Employee created (Code: ${employeeCode}), but verification system failed.`,
-                warning: true
-            }
-        }
+        // No post-creation verification needed - email was pre-verified!
+        console.log('[createEmployeeAction] Employee created with pre-verified email:', emailVerified)
 
         revalidatePath('/admin/employees')
 
