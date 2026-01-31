@@ -145,7 +145,7 @@ export default function AddEmployeePage() {
 
             if (authData.user) {
                 // Determine status based on role or default to active since verified manually
-                const { error: empError } = await supabase
+                const { error: empError } = await (supabase as any)
                     .from('employees')
                     .insert({
                         id: authData.user.id,

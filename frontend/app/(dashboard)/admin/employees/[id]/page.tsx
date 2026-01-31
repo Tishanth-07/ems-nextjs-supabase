@@ -10,7 +10,7 @@ export default async function EditEmployeePage(props: { params: Promise<{ id: st
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) redirect('/login')
 
-    const { data: employee, error } = await supabase
+    const { data: employee, error } = await (supabase as any)
         .from('employees')
         .select(`
       *,

@@ -15,7 +15,7 @@ export default async function ApprovalsPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) redirect('/login')
 
-    const { data: pendingLeaves } = await supabase
+    const { data: pendingLeaves } = await (supabase as any)
         .from('leaves')
         .select(`
       *,

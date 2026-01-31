@@ -18,7 +18,7 @@ export default async function LeavesPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) redirect('/login')
 
-    const { data: leaves } = await supabase
+    const { data: leaves } = await (supabase as any)
         .from('leaves')
         .select('*')
         .eq('employee_id', user.id)
@@ -62,7 +62,7 @@ export default async function LeavesPage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {leaves?.map((leave) => (
+                        {leaves?.map((leave: any) => (
                             <TableRow key={leave.id}>
                                 <TableCell>{leave.type}</TableCell>
                                 <TableCell>{leave.start_date} to {leave.end_date}</TableCell>

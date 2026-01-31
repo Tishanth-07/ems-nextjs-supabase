@@ -14,7 +14,7 @@ export async function requestLeave(formData: FormData) {
     const endDate = formData.get('end_date') as string
     const reason = formData.get('reason') as string
 
-    const { error } = await supabase
+    const { error } = await (supabase as any)
         .from('leaves')
         .insert({
             employee_id: user.id,
@@ -34,7 +34,7 @@ export async function cancelLeave(formData: FormData) {
     const supabase = await createClient()
     const id = formData.get('id') as string
 
-    const { error } = await supabase
+    const { error } = await (supabase as any)
         .from('leaves')
         .update({ status: 'cancelled' })
         .eq('id', id)

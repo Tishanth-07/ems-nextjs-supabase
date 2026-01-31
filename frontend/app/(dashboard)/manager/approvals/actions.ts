@@ -14,7 +14,7 @@ export async function processLeave(formData: FormData) {
 
     const status = action === 'approve' ? 'approved' : 'rejected'
 
-    const { error } = await supabase
+    const { error } = await (supabase as any)
         .from('leaves')
         .update({
             status,
