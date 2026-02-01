@@ -14,7 +14,7 @@ const settingsSchema = z.object({
     leave: z.object({
         default_annual_days: z.number().min(0).max(365),
         public_holidays: z.array(z.string()).optional(),
-        working_days: z.array(z.string()),
+        working_days: z.array(z.string()).optional(),
         grace_minutes: z.number().min(0).max(60),
     }).optional(),
     password: z.object({
@@ -113,7 +113,7 @@ export async function updateSettings(section: string, values: any) {
             .limit(1)
             .single()
 
-        const currentConfig = currentSettings?.config || {}
+        const currentConfig = (currentSettings?.config as Record<string, any>) || {}
         const newConfig = {
             ...currentConfig,
             [section]: values

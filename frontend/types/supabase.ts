@@ -59,30 +59,45 @@ export interface Database {
             email_verifications: {
                 Row: {
                     id: string
+                    user_id: string | null
                     email: string
-                    otp: string
+                    code: string
                     created_at: string
                     expires_at: string
                     verified: boolean
+                    attempts: number
                 }
                 Insert: {
                     id?: string
+                    user_id?: string | null
                     email: string
-                    otp: string
+                    code: string
                     created_at?: string
                     expires_at: string
                     verified?: boolean
+                    attempts?: number
                 }
                 Update: {
                     id?: string
+                    user_id?: string | null
                     email?: string
-                    otp?: string
+                    code?: string
                     created_at?: string
                     expires_at?: string
                     verified?: boolean
+                    attempts?: number
                 }
-                Relationships: []
+                Relationships: [
+                    {
+                        foreignKeyName: "email_verifications_user_id_fkey"
+                        columns: ["user_id"]
+                        isOneToOne: false
+                        referencedRelation: "users"
+                        referencedColumns: ["id"]
+                    }
+                ]
             }
+
             profiles: {
                 Row: {
                     id: string
@@ -121,6 +136,38 @@ export interface Database {
                     is_verified?: boolean
                 }
                 Relationships: []
+            }
+            settings: {
+                Row: {
+                    id: string
+                    config: Json
+                    created_at: string
+                    updated_at: string
+                    updated_by: string | null
+                }
+                Insert: {
+                    id?: string
+                    config?: Json
+                    created_at?: string
+                    updated_at?: string
+                    updated_by?: string | null
+                }
+                Update: {
+                    id?: string
+                    config?: Json
+                    created_at?: string
+                    updated_at?: string
+                    updated_by?: string | null
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: "settings_updated_by_fkey"
+                        columns: ["updated_by"]
+                        isOneToOne: false
+                        referencedRelation: "users"
+                        referencedColumns: ["id"]
+                    }
+                ]
             }
             payroll_summaries: {
                 Row: {

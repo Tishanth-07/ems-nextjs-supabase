@@ -34,7 +34,8 @@ import {
     FormMessage,
 } from "@/components/ui/form"
 import { createEmployeeAction } from "@/app/(dashboard)/admin/employees/actions"
-import { sendVerificationCodeAction, verifyEmailCodeAction } from "@/app/(dashboard)/admin/employees/verification-actions"
+import { sendVerificationCodeAction, verifyEmailCodeAction, resendVerificationCodeAction } from "@/app/(dashboard)/admin/employees/verification-actions"
+
 
 // Step 1: Email verification
 const emailSchema = z.object({
@@ -99,7 +100,7 @@ export function AddEmployeeDialog() {
         }
 
         setSendingCode(true)
-        const result = await sendVerificationCodeAction('temp-user-id', email, 'Pending Employee')
+        const result = await sendVerificationCodeAction(email)
         setSendingCode(false)
 
         if (result?.error) {
@@ -108,12 +109,7 @@ export function AddEmployeeDialog() {
             toast.success(`Verification code sent to ${email}`)
             setStep(2)
             setExpiryTime(10 * 60) // Reset timer
-
-            // For development
-            if (process.env.NODE_ENV === 'development' && result.devCode) {
-                console.log(`[DEV] Verification code: ${result.devCode}`)
-                toast.info(`[DEV] Code: ${result.devCode}`, { duration: 5000 })
-            }
+            toast.success('Code sent! Ask the employee to check their email inbox.')
         }
     }
 
@@ -125,7 +121,7 @@ export function AddEmployeeDialog() {
         }
 
         setVerifying(true)
-        const result = await verifyEmailCodeAction('temp-user-id', code)
+        const result = await verifyEmailCodeAction(email, code)
         setVerifying(false)
 
         if (result?.error) {
@@ -139,7 +135,7 @@ export function AddEmployeeDialog() {
 
     // Step 2: Resend code
     async function handleResend() {
-        const result = await sendVerificationCodeAction('temp-user-id', email, 'Pending Employee')
+        const result = await resendVerificationCodeAction(email)
 
         if (result?.error) {
             toast.error(result.error)
@@ -148,11 +144,7 @@ export function AddEmployeeDialog() {
             setResendCooldown(60)
             setExpiryTime(10 * 60)
             setCode('')
-
-            if (process.env.NODE_ENV === 'development' && result.devCode) {
-                console.log(`[DEV] New code: ${result.devCode}`)
-                toast.info(`[DEV] Code: ${result.devCode}`, { duration: 5000 })
-            }
+            toast.success('New code sent! Check email inbox.')
         }
     }
 
