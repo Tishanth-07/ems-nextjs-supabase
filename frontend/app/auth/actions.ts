@@ -231,16 +231,14 @@ export async function signInAction(prevState: any, formData: FormData) {
 
     revalidatePath('/', 'layout')
 
-    // Role-based Redirect - Use server-side redirect
+    // Role-based Redirect - Return URL to client for hard navigation
     const role = profile?.role || 'employee'
 
-    if (role === 'admin') {
-        redirect('/admin')
-    } else if (role === 'manager') {
-        redirect('/manager')
-    } else {
-        redirect('/employee')
-    }
+    const redirectUrl = role === 'admin' ? '/admin'
+        : role === 'manager' ? '/manager'
+            : '/employee'
+
+    return { success: true, redirectUrl, role }
 }
 
 // --- Action: Forgot Password ---
