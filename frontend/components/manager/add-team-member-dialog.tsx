@@ -51,7 +51,7 @@ export function AddTeamMemberDialog() {
                 return
             }
 
-            setCandidates(data || [])
+            setCandidates(data as Profile[] || [])
         } catch (error) {
             console.error('Error:', error)
             toast.error('Failed to load employees')

@@ -49,10 +49,9 @@ const menuItems = {
     ],
     manager: [
         { title: "Dashboard", url: "/manager", icon: LayoutDashboard },
-        { title: "My Team", url: "/manager/team", icon: Users },
-        { title: "Approvals", url: "/manager/approvals", icon: FileText },
-        { title: "Attendance", url: "/attendance", icon: Clock },
-        { title: "Leaves", url: "/leaves", icon: CalendarDays },
+        { title: "Attendance", url: "/manager/attendance", icon: Clock },
+        { title: "Leave Requests", url: "/manager/leaves", icon: CalendarDays },
+        { title: "Reports", url: "/manager/reports", icon: BarChart3 },
     ],
     employee: [
         { title: "Dashboard", url: "/employee", icon: LayoutDashboard },
