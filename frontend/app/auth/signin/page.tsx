@@ -56,14 +56,12 @@ export default function SignInPage() {
 
         const result = await signInAction(null, formData)
 
+        // Server action calls redirect() on success, so we only get here on error
         if (result?.error) {
             toast.error(result.error)
             setIsLoading(false)
-        } else if (result?.success && result.redirectUrl) {
-            toast.success(`Login successful! Redirecting to ${result.role} dashboard...`)
-            // Use window.location for hard redirect to ensure middleware processes it correctly
-            window.location.href = result.redirectUrl
         }
+        // Success case: redirect() throws and navigates, so this code won't execute
     }
 
     return (
