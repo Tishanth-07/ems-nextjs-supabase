@@ -68,7 +68,7 @@ export function TeamAttendance({ initialAttendance, teamIds, teamMembers }: Team
                     console.log('Attendance update:', payload)
 
                     // Check if this attendance belongs to our team
-                    const employeeId = payload.new?.employee_id || payload.old?.employee_id
+                    const employeeId = (payload.new as any)?.employee_id || (payload.old as any)?.employee_id
 
                     if (!teamIds.includes(employeeId as string)) {
                         return

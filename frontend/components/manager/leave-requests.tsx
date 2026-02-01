@@ -66,7 +66,7 @@ export function LeaveRequests({ initialRequests, teamIds, managerId }: LeaveRequ
                     console.log('Leave update:', payload)
 
                     // Check if this leave belongs to our team
-                    const employeeId = payload.new?.employee_id || payload.old?.employee_id
+                    const employeeId = (payload.new as any)?.employee_id || (payload.old as any)?.employee_id
 
                     if (!teamIds.includes(employeeId as string)) {
                         return
