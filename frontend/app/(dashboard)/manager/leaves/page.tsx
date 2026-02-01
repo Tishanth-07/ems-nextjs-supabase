@@ -21,7 +21,9 @@ export default async function ManagerLeavesPage() {
 
     // Only managers can access this page
     if (profile?.role !== 'manager') {
-        redirect('/dashboard')
+        console.log('[/manager/leaves] Non-manager detected, role:', profile?.role)
+        const redirectPath = profile?.role === 'admin' ? '/admin' : '/employee'
+        redirect(redirectPath)
     }
 
     // Get team member IDs

@@ -21,7 +21,9 @@ export default async function ManagerDashboardPage() {
 
     // Only managers can access this page
     if (profile?.role !== 'manager') {
-        redirect('/dashboard')
+        console.log('[/manager] Non-manager detected, role:', profile?.role)
+        const redirectPath = profile?.role === 'admin' ? '/admin' : '/employee'
+        redirect(redirectPath)
     }
 
     // Fetch team members (employees where manager_id = current user)

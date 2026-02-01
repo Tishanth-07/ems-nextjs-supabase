@@ -27,7 +27,10 @@ export default async function AdminDashboard() {
         .single()
 
     if (profile?.role !== 'admin') {
-        redirect('/dashboard')
+        console.log('[/admin] Non-admin detected, role:', profile?.role)
+        // Redirect to correct dashboard based on actual role
+        const redirectPath = profile?.role === 'manager' ? '/manager' : '/employee'
+        redirect(redirectPath)
     }
 
     // Fetch comprehensive admin data

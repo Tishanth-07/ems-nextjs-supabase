@@ -7,7 +7,7 @@ export default async function DashboardPage() {
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
-        redirect('/login')
+        redirect('/auth/signin')
     }
 
     // Fetch user profile to get role
@@ -18,20 +18,21 @@ export default async function DashboardPage() {
         .single()
 
     if (!profile) {
-        // Handle case where profile doesn't exist yet (should trigger from sign up)
-        // For now, redirect to a setup or waiting page, or stay on a generic dashboard
         return <div>Profile not found. Please contact support.</div>
     }
 
-    // Redirect based on role
-    switch (profile.role) {
-        case 'admin':
-            redirect('/admin')
-        case 'manager':
-            redirect('/manager')
-        case 'employee':
-            redirect('/employee')
-        default:
-            return <div>Unknown role</div>
+    const role = profile.role
+
+    console.log('[/dashboard] Redirecting user with role:', role)
+
+    // Redirect based on role - NO hardcoded /employee!
+    if (role === 'admin') {
+        redirect('/admin')
+    } else if (role === 'manager') {
+        redirect('/manager')
+    } else if (role === 'employee') {
+        redirect('/employee')
+    } else {
+        return <div>Unknown role: {role}. Please contact support.</div>
     }
 }
