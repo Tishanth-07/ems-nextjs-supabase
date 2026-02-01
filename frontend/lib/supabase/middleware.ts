@@ -36,6 +36,11 @@ export async function updateSession(request: NextRequest) {
     const url = request.nextUrl.clone()
     const pathname = url.pathname
 
+    console.log('[Middleware] ===== NEW REQUEST =====')
+    console.log('[Middleware] Path:', pathname)
+    console.log('[Middleware] Has user:', !!user)
+    if (user) console.log('[Middleware] User ID:', user.id)
+
     // 1. If no user and trying to access protected routes, redirect to signin
     const protectedPaths = ['/admin', '/manager', '/employee', '/dashboard', '/profile', '/attendance', '/leaves']
     const isProtected = protectedPaths.some(p => pathname.startsWith(p))
@@ -47,14 +52,18 @@ export async function updateSession(request: NextRequest) {
 
     // 2. If user is logged in, fetch their role
     if (user) {
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('role')
             .eq('id', user.id)
             .single()
 
+        console.log('[Middleware] Profile fetch error:', profileError)
+        console.log('[Middleware] Profile data:', profile)
+
         const role = profile?.role || 'employee'
 
+        console.log('[Middleware] *** DETECTED ROLE:', role, '***')
         console.log('[Middleware] User:', user.id, 'Role:', role, 'Path:', pathname)
 
         // 3. Redirect authenticated users from auth pages to their dashboard
