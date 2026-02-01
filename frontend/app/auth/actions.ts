@@ -220,7 +220,7 @@ export async function signInAction(prevState: any, formData: FormData) {
 
     // Perform Login
     const supabase = await createClient()
-    const { error } = await supabase.auth.signInWithPassword({
+    const { error, data } = await supabase.auth.signInWithPassword({
         email,
         password,
     })
@@ -229,16 +229,38 @@ export async function signInAction(prevState: any, formData: FormData) {
         return { error: error.message }
     }
 
+    if (!data.session) {
+        return { error: 'Login failed - no session created' }
+    }
+
+    // Fetch role again from session user ID to ensure accuracy
+    const { data: userProfile, error: profileError } = await supabaseService
+        .from('profiles')
+        .select('role')
+        .eq('id', data.session.user.id)
+        .single()
+
+    if (profileError || !userProfile) {
+        return { error: 'Could not fetch user role' }
+    }
+
+    const role = userProfile.role
+
+    // Log for debugging
+    console.log('User logged in with role:', role)
+
     revalidatePath('/', 'layout')
 
-    // Role-based Redirect - Return URL to client for hard navigation
-    const role = profile?.role || 'employee'
-
-    const redirectUrl = role === 'admin' ? '/admin'
-        : role === 'manager' ? '/manager'
-            : '/employee'
-
-    return { success: true, redirectUrl, role }
+    // Direct server-side redirect based on role - NO OTHER CODE AFTER THIS
+    if (role === 'admin') {
+        redirect('/admin')
+    } else if (role === 'manager') {
+        redirect('/manager')
+    } else if (role === 'employee') {
+        redirect('/employee')
+    } else {
+        redirect('/employee') // fallback
+    }
 }
 
 // --- Action: Forgot Password ---
