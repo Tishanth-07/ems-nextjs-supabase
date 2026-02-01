@@ -16,6 +16,7 @@ import {
     UserCircle,
     Command,
 } from "lucide-react"
+import Image from "next/image"
 
 import {
     Sidebar,
@@ -86,11 +87,11 @@ export function DashboardSidebar({ user, userRole, ...props }: DashboardSidebarP
             <SidebarHeader>
                 <div className="flex items-center gap-2 px-2 py-1">
                     <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                        <Command className="size-4" />
+                        <Image src="/logo.png" alt="StaffSync" width={32} height={32} className="object-contain" />
                     </div>
                     <div className="grid flex-1 text-left text-sm leading-tight">
-                        <span className="truncate font-semibold">EMS</span>
-                        <span className="truncate text-xs">Enterprise</span>
+                        <span className="truncate font-bold">StaffSync</span>
+                        <span className="truncate text-xs">Management</span>
                     </div>
                 </div>
             </SidebarHeader>

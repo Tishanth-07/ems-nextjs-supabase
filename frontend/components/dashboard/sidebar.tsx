@@ -12,6 +12,7 @@ import {
     Clock,
     UserCircle
 } from 'lucide-react'
+import Image from 'next/image'
 
 import { cn } from '@/lib/utils'
 
@@ -29,7 +30,10 @@ export function Sidebar() {
     return (
         <div className="hidden md:flex flex-col w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-center h-16 border-b border-gray-200 dark:border-gray-700">
-                <span className="text-xl font-bold text-gray-800 dark:text-white">EMS</span>
+                <div className="flex items-center gap-2">
+                    <Image src="/logo.png" alt="StaffSync Logo" width={32} height={32} />
+                    <span className="text-xl font-bold text-gray-800 dark:text-white">StaffSync</span>
+                </div>
             </div>
             <div className="flex-1 flex flex-col overflow-y-auto py-4">
                 <nav className="flex-1 px-2 space-y-1">

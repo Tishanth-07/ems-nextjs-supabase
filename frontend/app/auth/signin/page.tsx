@@ -73,8 +73,11 @@ export default function SignInPage() {
                 className="w-full max-w-md"
             >
                 <Card className="border-t-4 border-t-primary shadow-xl">
-                    <CardHeader className="space-y-1">
-                        <CardTitle className="text-2xl font-bold text-center">Welcome back</CardTitle>
+                    <CardHeader className="space-y-1 flex flex-col items-center">
+                        <div className="mb-4">
+                            <img src="/logo.png" alt="StaffSync" className="h-12 w-auto" />
+                        </div>
+                        <CardTitle className="text-2xl font-bold text-center">StaffSync</CardTitle>
                         <CardDescription className="text-center">
                             Sign in to your account
                         </CardDescription>
